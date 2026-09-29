@@ -35,7 +35,7 @@
 <!-- Self-hosted type: no third-party font request, so this page contacts nobody else. -->
 <link rel="preload" href="/assets/fonts/manrope-latin-variable.a30ddcd3.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/fonts.5ee0a843.css">
-<link rel="stylesheet" href="/assets/css/site.0dbdb60a.css">
+<link rel="stylesheet" href="/assets/css/site.c16e6a65.css">
 
 <script type="application/ld+json">
 {
@@ -517,6 +517,61 @@
     </div>
   </section>
 
+  <!-- ============================== FEEDBACK ============================ -->
+  <section class="section section--paper" id="feedback" aria-labelledby="feedbackTitle">
+    <div class="shell shell--narrow">
+      <header class="section__head">
+        <p class="kicker kicker--dark">Feedback</p>
+        <h2 id="feedbackTitle">Tell us what you found.</h2>
+        <p class="section__lede" data-truth="feedback/invite">
+          This page is a preview. If something is unclear or wrong, send a note with
+          your own email app. Nothing leaves this page until you press send in your
+          own app.
+        </p>
+      </header>
+
+      <div data-truth="feedback">
+        <h3 data-truth="feedback/consent">Your note leaves only when you send it.</h3>
+        <p>
+          Contact is optional. Choosing a topic below opens your own email app with a
+          pre-addressed note you can edit or discard. Leaving without sending means
+          nothing is recorded. To do nothing is a real choice here, and it leaves no trace.
+        </p>
+
+        <p>
+          <input type="checkbox" id="feedbackConsent">
+          <label for="feedbackConsent">Count my visit on this page only. Unticked means no counting.</label>
+        </p>
+
+        <div class="feedback__actions">
+          <a class="btn btn--ghost" data-feedback-topic="page-clear" href="mailto:admin@lastikadi.com?subject=LastiKadi%20page%20feedback%20-%20clear&amp;body=Topic%3A%20page%20was%20clear%0AWhat%20I%20saw%3A%20%0A">Page was clear</a>
+          <a class="btn btn--ghost" data-feedback-topic="page-confusing" href="mailto:admin@lastikadi.com?subject=LastiKadi%20page%20feedback%20-%20confusing&amp;body=Topic%3A%20page%20was%20confusing%0AWhat%20confused%20me%3A%20%0A">Page was confusing</a>
+          <a class="btn btn--ghost" data-feedback-topic="page-wrong" href="mailto:admin@lastikadi.com?subject=LastiKadi%20page%20feedback%20-%20wrong&amp;body=Topic%3A%20something%20is%20wrong%0AWhat%20is%20wrong%3A%20%0A">Something is wrong</a>
+        </div>
+
+        <h3 data-truth="feedback/trial">Preview signals stay on this page.</h3>
+        <p>
+          Counts for arrived, started, played and finished or left stay on this page
+          only. They are not stored and not sent unless you include them in your note.
+        </p>
+        <ul class="feedback__counts" aria-live="polite">
+          <li>Arrived: <span id="trialArrived">0</span></li>
+          <li>Started: <span id="trialStarted">0</span></li>
+          <li>Played: <span id="trialPlayed">0</span></li>
+          <li>Finished or left: <span id="trialFinished">0</span></li>
+        </ul>
+        <p class="feedback__note" id="trialStatus">Counting starts only after you tick the box above. Unticking stops it and clears the counts.</p>
+
+        <h3 data-truth="feedback/limits">What this instrument cannot do yet.</h3>
+        <p>
+          There are no server-side totals yet and no published triage. Replies are
+          manual. If you need a reply, say so in your note. This section promises a
+          mailbox, not a dashboard.
+        </p>
+      </div>
+    </div>
+  </section>
+
   <!-- ================================ FAQ =============================== -->
   <section class="section section--paper section--tight" id="faq" aria-labelledby="faqTitle">
     <div class="shell shell--narrow">
@@ -565,11 +620,13 @@
       <a href="#status">Where it stands</a>
       <a href="#how">How Kadi works</a>
       <a href="#playtest">Playtest</a>
+      <a href="#feedback">Feedback</a>
       <a href="#top">Back to top</a>
     </nav>
   </div>
 </footer>
 
 <script src="/assets/js/site.b8ef2a3b.js" defer></script>
+<script type="module" src="/assets/js/feedback.4979fd0b.js" defer></script>
 </body>
 </html>
