@@ -1,0 +1,9 @@
+# lastikadi.com
+#
+# The site is a single static page and is safe to index. There is no staging or
+# internal host to hide, and no admin surface on this origin.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://lastikadi.com/sitemap.xml

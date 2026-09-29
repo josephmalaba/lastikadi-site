@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  One page, one URL. Every section on the landing page is an in-page anchor on
+  the same document, so only the canonical root is listed. Anchors are omitted
+  deliberately: they are not separate documents and listing them would imply
+  pages that do not exist.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://lastikadi.com/</loc>
+    <changefreq>monthly</changfreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
