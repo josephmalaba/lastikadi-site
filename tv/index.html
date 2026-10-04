@@ -30,11 +30,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--cream);
 
    So this is a SIZING fix, which is the knob the room explicitly offered ("you can change
    size of font/menu/labels of properties"). The clamp tops out at 17px: enough for a 10-foot
-   read at 1080p, small enough that the heading, the sentence and four property tiles fit the
-   row the stage gives them at every size a panel is mounted at. `overflow` stays VISIBLE
-   everywhere on purpose — no scrolling, no clipping, and if a future edit ever makes the
-   content too tall it overflows and is MEASURED, rather than being quietly absorbed by a
-   scrollbar or quietly cut off. tests/layout.test.mjs fails on either. */
+   read at 1080p, small enough that the heading, the sentence, the property tiles, the
+   countdown and the per-game details fit the row the stage gives them at every size a panel
+   is mounted at. `overflow` stays VISIBLE everywhere on purpose — no scrolling, no clipping,
+   and if a future edit ever makes the content too tall it overflows and is MEASURED, rather
+   than being quietly absorbed by a scrollbar or quietly cut off. tests/layout.test.mjs fails
+   on either, and it now asks EVERY element whether its content is taller than its box. */
 html{font-size:clamp(11px,0.92vw,17px)}
 .stage{height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:1.2rem 1.6rem;gap:.8rem}
 header{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
@@ -58,6 +59,25 @@ main{display:grid;grid-template-columns:auto 1fr;gap:1.2rem;align-items:start;mi
    a scan code is the one thing on this screen that has to be big enough to read from across a
    room. The details column takes what is left, which is exactly what `1fr` is for. */
 .qr canvas{display:block;width:min(38vh,26vw,30rem);height:auto;image-rendering:pixelated}
+/* THE COUNTDOWN, and the one trade it forces.
+   This is the thing the room has to read from across the room, so it is sized against the
+   viewport in the same way the scan code is, and it is never smaller than the body text.
+   When a table is being counted down the symbol is narrowed (rule below) so that both fit
+   the column without either being cut: a person walks up to a wall to scan a code, but a
+   room reads the clock from where it is sitting. When there is no countdown the symbol
+   takes the full size it had before. */
+.clock{display:flex;flex-direction:column;align-items:center;gap:.15rem;min-width:0;max-width:100%}
+/* `line-height:normal` rather than 1, and it is not cosmetic: this harness asks EVERY element
+   whether its content is taller than its box, and a line-height below the font's own line box
+   makes the browser report the glyph box as content past the edge — 102px of box holding a
+   119px line. Nothing was visibly cut, and it is still a FAILURE by the rule this page is
+   held to, so the box is grown to hold its own line. */
+.clock__big{font-size:min(7.5vw,12vh,6rem);line-height:normal;font-weight:800;color:var(--gold-hi);
+  font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.clock__big[hidden]{display:none}
+.clock__word{font-size:1.08rem;font-weight:650;color:var(--cream);text-align:center}
+.clock__word.warn{color:#C9A66B}
+.clock__detail{font-size:.9rem;color:var(--dim);text-align:center;max-width:32ch;line-height:1.35}
 .joinlabel{font-size:1.35rem;color:var(--gold-hi);font-weight:650;text-align:center}
 .joinurl{font-size:.95rem;color:var(--dim);text-align:center;word-break:break-all;
   max-width:20rem;line-height:1.3}
@@ -85,11 +105,74 @@ footer .dot.down{background:#8C5A4A}
    stacking under the fold. */
 @media (max-height:820px){ .slots{grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))} }
 
+/* ---- the table this screen is following ----
+   The countdown and the honest statement of what the screen is waiting for. Shown whenever
+   the page's own address names a table; a single quiet line when it does not, because a wall
+   that shouts an operator instruction at the room is a worse wall. */
+.stage[data-table="waiting"] .qr canvas{width:min(24vh,18vw,18rem)}
+.stage[data-table="waiting"] .joinurl{font-size:.85rem}
+
+/* ---- the per-game details panel ----
+   Built by ./details.2cf2f248.mjs from a table keyed by game id: Kadi's rows and Shogi's rows are
+   different rows, and a game with no entry gets a panel that names itself and invents
+   nothing. Laid out as a wrapping grid of label/value rows so a wide stage gets more
+   columns rather than more height — the fit is a property of the layout, not of the words. */
+.panel{margin-top:.1rem;border:1px solid var(--line);border-radius:.8rem;background:#121E18;
+  padding:.6rem .8rem;display:flex;flex-direction:column;gap:.45rem;min-width:0}
+.panel[hidden]{display:none}
+.panel__head{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap}
+.panel__game{font-size:1.3rem;font-weight:700;color:var(--gold-hi)}
+.panel__rules{font-size:.88rem;color:var(--dim)}
+.panel__state{font-size:.88rem;font-weight:650;border:1px solid var(--line);border-radius:.45rem;
+  padding:.08rem .55rem;color:var(--cream);background:#0B1410}
+.panel__state[data-state="warn"]{border-style:dotted;color:#C9A66B}
+.panel__seats,.panel__facts,.panel__fields{display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(12.5rem,1fr));gap:.3rem .7rem;min-width:0}
+.panel__seats[hidden],.panel__facts[hidden],.panel__fields[hidden]{display:none}
+.panel__row{display:flex;flex-direction:column;min-width:0}
+.panel__k{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+.panel__v{font-size:1rem;font-weight:600;overflow-wrap:anywhere;line-height:1.25}
+.panel__row--absent .panel__v{color:var(--dim);font-weight:500}
+.panel__row--unreadable .panel__v{color:#C9A66B;font-weight:500}
+.panel__row--open .panel__v{color:var(--dim);font-weight:500}
+.panel__foot{margin:0;font-size:.78rem;color:var(--dim);line-height:1.35}
+.panel__foot[hidden]{display:none}
+/* A short panel has the least height to give, and the panel is the tallest thing in the
+   details column. Measured at 1366x768 the column came to 476.4px inside a 473.9px row — a
+   2.5px overflow that the strict rule reports, and that a reader would never see. Tightening
+   here rather than shrinking the countdown or the scan code, which are the two things on this
+   screen that have to stay legible from across the room. */
+@media (max-height:820px){
+  .board{gap:.45rem}
+  .panel{padding:.45rem .65rem;gap:.35rem}
+  .panel__v{font-size:.95rem}
+  .panel__foot{font-size:.72rem;line-height:1.25}
+  .panel__seats,.panel__facts,.panel__fields{gap:.22rem .6rem}
+  .slots{gap:.45rem}
+  .slot{padding:.5rem .7rem}
+}
+/* A short panel has the least height to give, so the tiles sit beside each other rather than
+   stacking under the fold. */
+@media (max-height:820px){ .slots{grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))} }
+
 /* ---- game picker ----
    Sized for a screen read from across a room: no control smaller than a thumb, and
    every state distinguishable by more than colour alone. */
 .picker{grid-column:1/-1;border:1px solid var(--line);border-radius:.9rem;padding:1rem 1.1rem;background:#121E18}
 .picker__head{display:flex;align-items:baseline;gap:.9rem;flex-wrap:wrap;margin-bottom:.7rem}
+/* ---- the pairing prompt ----
+   Empty in the normal case: a display that is already paired shows nothing here, so the row
+   costs a paired wall exactly nothing. When it is shown, the CODE is the biggest thing on the
+   line, because somebody has to read it off a wall and type it into a phone. */
+.pair{display:inline-flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;border:1px solid var(--line);
+  border-radius:.6rem;padding:.25rem .7rem;background:#0B1410}
+.pair[hidden]{display:none}
+.pair__word{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.pair__word[data-state="warn"]{color:#C9A66B}
+.pair__code{font-size:2.2rem;font-weight:800;letter-spacing:.12em;color:var(--gold-hi);line-height:normal;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.pair__code[hidden]{display:none}
+.pair__say{font-size:.92rem;color:var(--cream);max-width:52ch;line-height:1.3}
 .picker__label{font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 .picker__state{font-size:.95rem;font-weight:650;border:1px solid var(--line);border-radius:.5rem;
   padding:.22rem .7rem;color:var(--cream);background:#0B1410}
@@ -124,11 +207,12 @@ footer .dot.down{background:#8C5A4A}
 </style>
 </head>
 <body>
-<div class="stage">
+<div class="stage" id="stage" data-table="no-table">
   <header>
     <span class="brand">LastiKadi</span>
     <span class="tag" id="venueTag">LastiKadi at the table</span>
     <span class="spacer"></span>
+    <span class="status" id="pairTag"></span>
     <span class="status" id="clock"></span>
   </header>
 
@@ -137,6 +221,16 @@ footer .dot.down{background:#8C5A4A}
       <div class="picker__head">
         <span class="picker__label">Choose a game</span>
         <span class="picker__state" id="pickerState" data-state="loading">… Checking</span>
+        <!-- THE PAIRING PROMPT LIVES ON THIS LINE, and that is a layout decision made by
+             measurement: it shares a row the picker already has, so showing it costs no height
+             at any measured viewport and therefore cannot push the countdown or the details
+             panel out of the room. It is also where the instruction has to be: a code on a
+             wall with no sentence saying what to do with it is a dead end. -->
+        <span class="pair" id="pairBox" hidden>
+          <span class="pair__word" id="pairWord" data-state="ok">Not paired</span>
+          <span class="pair__code" id="pairCode"></span>
+          <span class="pair__say" id="pairSay"></span>
+        </span>
       </div>
       <div class="picker__games" id="games" role="listbox" aria-label="Games this venue can host" aria-busy="true"></div>
       <div class="picker__note" id="pickerNote" role="status">Checking which games this table service can host…</div>
@@ -144,6 +238,11 @@ footer .dot.down{background:#8C5A4A}
     </div>
 
     <div class="joinbox">
+      <div class="clock">
+        <div class="clock__big" id="countdown" role="timer" aria-live="off" hidden></div>
+        <div class="clock__word" id="countdownWord" data-state="no-table">· No table named</div>
+        <div class="clock__detail" id="countdownDetail"></div>
+      </div>
       <div class="qr" id="qrBox" hidden><canvas id="qr" width="1" height="1" role="img" aria-label="No game to open — nothing to scan"></canvas></div>
       <div class="joinlabel" id="joinLabel">Checking the list of games…</div>
       <div class="joinurl" id="joinUrl"></div>
@@ -156,6 +255,17 @@ footer .dot.down{background:#8C5A4A}
         no prizes, no wagering, no account. Play against the machine or pass the phone
         around the table.
       </p>
+      <section class="panel" id="tablePanel" aria-label="This table" hidden>
+        <div class="panel__head">
+          <span class="panel__game" id="panelGame"></span>
+          <span class="panel__rules" id="panelRules"></span>
+          <span class="panel__state" id="panelState" data-state="ok"></span>
+        </div>
+        <div class="panel__seats" id="panelSeats"></div>
+        <div class="panel__facts" id="panelFacts"></div>
+        <div class="panel__fields" id="panelFields"></div>
+        <p class="panel__foot" id="panelFoot"></p>
+      </section>
       <div class="slots" id="slots"></div>
     </div>
   </main>
@@ -170,13 +280,26 @@ footer .dot.down{background:#8C5A4A}
 <script type="module">
 import { matrix } from './qr.28204555.mjs';
 import { STATES, planFor, qrPlan, readPortfolio, readSelectionFragment, renderPicker, selectionFragment } from './portfolio.16f1ebf8.mjs';
+import { TABLE_STATES, readTable, readTableCode, renderTable, tablePlan, withTableCode } from './table.e1c83b6e.mjs';
+import { panelPlan, renderPanel } from './details.2cf2f248.mjs';
+import {
+  PAIR_STATES, applyPairOutcome, clearToken, initialPairState, pairPlan, pairStep, pairingRevoked,
+  pollPairToken, requestPairCode, withAuthorization, writeToken,
+} from './pair.ab72088f.mjs';
 
 /*
- * This screen talks to exactly one origin, and reads exactly one thing from it: the
- * portfolio. There is no game list in this file and no default game. A venue display
- * that opens a game it has not been told about is the failure this page exists to
- * avoid, because a person standing at the table cannot tell a switched-off game from a
+ * This screen talks to exactly one origin, and reads exactly two things from it: the
+ * portfolio, which says which games this venue can host at all, and — when its own address
+ * names one — a single table, which says whether that table is still waiting or already in
+ * play and when its wait ends. There is no game list in this file and no default game. A
+ * venue display that opens a game it has not been told about is the failure this page exists
+ * to avoid, because a person standing at the table cannot tell a switched-off game from a
  * screen that is simply broken.
+ *
+ * THE COUNTDOWN IS NOT THIS PAGE'S. It is the table service's `waitDeadline`, rendered as a
+ * difference. Both this screen and the phone read the same absolute value from the same
+ * public route, so the two countdowns cannot drift apart — see ./table.e1c83b6e.mjs. Nothing here
+ * decides how long the wait is, and nothing here starts a table.
  */
 const TABLE_SERVICE = 'https://api.lastikadi.com';
 
@@ -276,8 +399,10 @@ async function checkService() {
  *
  * Everything about which games exist, which of them can be opened and what a scan
  * carries is decided in ./portfolio.16f1ebf8.mjs, from the table service's own answer, and is
- * testable without a browser. This page contributes the network call, the canvas, the
- * clock and the click — and no decisions.
+ * testable without a browser. Everything about the table this screen is following — and
+ * about how long its wait has left — is decided in ./table.e1c83b6e.mjs, and everything about what
+ * that game's table shows a room is decided in ./details.2cf2f248.mjs. This page contributes the
+ * network calls, the canvas, the clock and the click — and no decisions.
  *
  * The one rule the whole arrangement exists to keep: nothing here can render a game as
  * selectable unless the portfolio says it is available. `gameButton()` binds `disabled`
@@ -294,9 +419,111 @@ const ui = {
   venueTag: $('venueTag'),
   joinLabel: $('joinLabel'),
 };
+const tableUi = {
+  stage: $('stage'),
+  countdown: $('countdown'),
+  countdownWord: $('countdownWord'),
+  countdownDetail: $('countdownDetail'),
+};
+const panelUi = {
+  panel: $('tablePanel'),
+  panelGame: $('panelGame'),
+  panelRules: $('panelRules'),
+  panelState: $('panelState'),
+  panelSeats: $('panelSeats'),
+  panelFacts: $('panelFacts'),
+  panelFields: $('panelFields'),
+  panelFoot: $('panelFoot'),
+};
 const qrBox = $('qrBox');
 const qrCanvas = $('qr');
 const joinUrl = $('joinUrl');
+const pairBox = $('pairBox');
+const pairWord = $('pairWord');
+const pairCode = $('pairCode');
+const pairSay = $('pairSay');
+const pairTag = $('pairTag');
+
+/* ---- pairing ----
+ *
+ * The credential this device holds is kept in THIS BROWSER and sent only as an
+ * `Authorization` header — never in the address, never in the scan code, never in an element.
+ * ./pair.ab72088f.mjs owns all of that. All this page does is drive the state machine on its own tick
+ * and paint what it says.
+ *
+ * `localStorage` is reached through a guard rather than `window.localStorage`, because a
+ * browser that refuses storage (private mode, blocked cookies) must produce an honest sentence
+ * on the screen rather than a thrown exception that takes the whole display down.
+ */
+function deviceStorage() {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
+let pair = initialPairState(deviceStorage());
+let pairBusy = false;
+
+function paintPairing() {
+  const pp = pairPlan(pair, Date.now());
+  pairBox.hidden = !pp.shows;
+  pairWord.textContent = pp.word;
+  pairWord.dataset.state = pp.warn ? 'warn' : 'ok';
+  pairCode.textContent = pp.userCode || '';
+  pairCode.hidden = !pp.userCode;
+  pairSay.textContent = pp.say;
+  // What the screen is waiting for, as data on the element: an operator can read the gap off
+  // the page instead of inferring it from a sentence.
+  if (pp.needs) pairSay.dataset.needs = pp.needs;
+  else delete pairSay.dataset.needs;
+  pairTag.textContent = pp.paired ? 'paired' + (pp.username ? ' as ' + pp.username : '') : '';
+  return pp;
+}
+
+/**
+ * One step of the pairing, driven by the page's tick.
+ *
+ * Nothing here polls on a timer of its own: ./pair.ab72088f.mjs decides whether a step is due, honours
+ * the service's `intervalSeconds`, backs off when the service says to slow down, and stops at
+ * approved, at expired and at a refusal. This function only carries out the step it is given.
+ */
+async function stepPairing() {
+  if (pairBusy) return;
+  const step = pairStep(pair, Date.now());
+  if (step.action !== 'request' && step.action !== 'poll') return;
+  pairBusy = true;
+  try {
+    if (step.action === 'request') {
+      pair = applyPairOutcome(
+        { ...pair, state: PAIR_STATES.REQUESTING },
+        { outcome: PAIR_STATES.REQUESTING, detail: pair.detail },
+        Date.now(),
+      );
+      paintPairing();
+      pair = applyPairOutcome(pair, await requestPairCode((url, init) => fetch(url, init)), Date.now());
+    } else {
+      const result = await pollPairToken((url, init) => fetch(url, init), pair.deviceCode);
+      if (result.outcome === PAIR_STATES.APPROVED) {
+        // Kept before the state says "paired", so a screen never claims a pairing it did not
+        // manage to store: a token that lives only in a variable is gone at the next reload.
+        writeToken(deviceStorage(), result, Date.now());
+      }
+      pair = applyPairOutcome(pair, result, Date.now());
+    }
+  } finally {
+    pairBusy = false;
+  }
+  paintPairing();
+  // A pairing that just landed changes what the screen may read, so the table is re-read
+  // immediately rather than at the next polite interval.
+  if (pair.state === PAIR_STATES.APPROVED) loadTable();
+}
+
+/** Every read of the table service carries this device's credential when it has one. */
+function withDeviceAuth(init) {
+  return withAuthorization(init, pair.token);
+}
 
 /*
  * The chosen game survives a reload. A venue screen is left on for days and reloaded by
@@ -304,33 +531,27 @@ const joinUrl = $('joinUrl');
  * the game under a code somebody already scanned — a different table from the one the
  * person is standing at. So the choice rides on this page's own address and is read back
  * before the portfolio is even fetched.
+ *
+ * The table this screen follows rides there too, as ?code= — see ./table.e1c83b6e.mjs for why that
+ * is the only way a code can reach a display today.
  */
 let chosen = readSelectionFragment(location.hash);
+let tableCode = readTableCode(location.search, location.hash);
 let outcome = { state: STATES.LOADING, games: [], detail: '' };
 let plan = planFor(outcome, chosen);
+let tableOutcome = tableCode
+  ? { state: TABLE_STATES.READING, table: null, detail: '' }
+  : { state: TABLE_STATES.NO_TABLE, table: null, detail: '' };
+let tableP = tablePlan(tableOutcome, plan.selection, Date.now());
 
 function paint(next) {
-  plan = next;
-  renderPicker(document, ui, plan);
-
-  const scan = qrPlan(plan);
-  if (scan.show) {
-    drawQr(qrCanvas, scan.url);
-    qrBox.hidden = false;
-    joinUrl.textContent = scan.text;
-  } else {
-    // No verified game, no scan code. A code left pointing at a game this screen can no
-    // longer vouch for is a link to a table nobody opened.
-    qrBox.hidden = true;
-    joinUrl.textContent = '';
-  }
-  qrCanvas.setAttribute('aria-label', scan.ariaLabel);
+  plan = renderPicker(document, ui, next || planFor(outcome, chosen));
 
   if (plan.selection) {
     // The carried choice becomes whatever the screen actually shows, so a sentence about
     // a game that was replaced is said once rather than every five minutes.
     chosen = { gameId: plan.selection.gameId, ruleVersion: plan.selection.ruleVersion };
-    const carried = selectionFragment(plan.selection);
+    const carried = withTableCode(selectionFragment(plan.selection), tableCode);
     if (carried !== location.hash) {
       // The address is the page's own state, not somewhere the back button should go.
       // When there is no selection it is left alone: it still records what was chosen,
@@ -338,7 +559,51 @@ function paint(next) {
       history.replaceState(null, '', location.pathname + location.search + carried);
     }
   }
+  paintTable();
   return plan;
+}
+
+/**
+ * Everything the table contributes to the screen: the countdown, whether the scan code is
+ * still standing, and the per-game details panel.
+ *
+ * Kept separate from paint() because the countdown is re-rendered on a fast tick while the
+ * portfolio is only re-read every five minutes — a wall needs the seconds to move without
+ * redrawing the scan code sixty times a minute.
+ */
+function paintTable() {
+  tableP = tablePlan(tableOutcome, plan.selection, Date.now());
+  renderTable(document, tableUi, tableP);
+
+  const scan = qrPlan(plan);
+  /*
+   * The scan code's job ends when play begins, so it goes when the table says the cards are
+   * on the table (or when the code turned out not to be a table at all). It stays when the
+   * table could not be read, because the game and version it carries are still true and
+   * taking the only way in off a wall would punish the room for the screen's fault.
+   */
+  const show = scan.show && tableP.scanAllowed;
+  if (show) {
+    drawQr(qrCanvas, scan.url);
+    qrBox.hidden = false;
+    joinUrl.textContent = scan.text;
+    ui.joinLabel.textContent = plan.joinLabel;
+  } else {
+    // No verified game, no scan code — and no code either once the table is in play: a code
+    // left pointing at a game this screen can no longer vouch for is a link to a table
+    // nobody opened.
+    qrBox.hidden = true;
+    joinUrl.textContent = '';
+    ui.joinLabel.textContent = scan.show
+      ? 'Scan code removed — ' + tableP.word.toLowerCase()
+      : plan.joinLabel;
+  }
+  qrCanvas.setAttribute('aria-label', scan.ariaLabel);
+
+  renderPanel(document, panelUi, panelPlan({
+    outcome, selection: plan.selection, table: tableP, paired: pair.state === PAIR_STATES.APPROVED,
+  }));
+  return tableP;
 }
 
 function select(gameId) {
@@ -362,12 +627,40 @@ async function loadPortfolio() {
   paint(planFor(outcome, chosen));
 }
 
+/**
+ * Read the table this screen follows. Nothing is read when the address names no table: a
+ * screen that invented a table to follow would be advertising a table nobody opened.
+ *
+ * A refusal (401/403) is the ONE answer a screen must never soften: the credential it holds is
+ * not accepted, so it is discarded and the screen goes back to pairing rather than retrying a
+ * rejected token in a loop or falling back to a read it is not entitled to.
+ */
+async function loadTable() {
+  if (!tableCode) return;
+  tableOutcome = await readTable((url, init) => fetch(url, withDeviceAuth(init)), tableCode);
+  if (tableOutcome.state === TABLE_STATES.REFUSED) {
+    clearToken(deviceStorage());
+    pair = pairingRevoked(pair, tableOutcome.detail);
+    paintPairing();
+  }
+  paintTable();
+}
+
 paint(plan);
+paintPairing();
+stepPairing();
 $('build').textContent = 'tv.lastikadi.com';
 tick();
 setInterval(tick, 20000);
+// The seconds have to move, and the table's own state has to be noticed when it changes
+// under the screen — a wait that ends, or a host who deals.
+setInterval(paintTable, 500);
+setInterval(loadTable, 2000);
+// The pairing state machine decides what a step is and when it is due; this only drives it.
+setInterval(stepPairing, 1000);
 checkService();
 loadPortfolio();
+loadTable();
 // Re-check politely: a venue screen left on all day should notice a service
 // coming up without hammering it.
 setInterval(checkService, 60000);
