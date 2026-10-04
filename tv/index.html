@@ -21,68 +21,69 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--cream);
    not a phone in a hand. The whole layout scales from one root value so a
    Hisense panel at 1080p and a laptop at 720p both read correctly.
 
-   MEASURED, NOT GUESSED. The clamp used to top out at 30px, and at that size the details
-   column (the heading, the sentence and the four property tiles) was 708px tall inside a
-   698px row at 1920x1080, 506px inside 495px at 1366x768, and 474px inside 545px at
-   1280x800. `main` had `overflow:hidden`, so what did not fit was not scrolled and not
-   shrunk — it was cut off, over the footer: the QR, the board, the property tiles and the
-   footer all intersected, and `.slots` sat 343px below the fold at 1080p. The Founder
-   reported it as "the details don't fit on the screen - some overlap or are hidden", and
-   that is exactly what the numbers say. The cap is now 22px. */
-html{font-size:clamp(13px,1.25vw,22px)}
-.stage{height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:1.6rem 2rem;gap:1rem}
+   IT HAS TO FIT, NOT SCROLL — and this took three attempts, the first two wrong in the same
+   direction. First the clamp reached 30px, the details column measured 708px tall inside a
+   698px row at 1920x1080, and `main{overflow:hidden}` CUT the excess off: the property tiles
+   sat 343px below the fold, over the footer, and the QR with them. Then `overflow:hidden` was
+   replaced with a scroll container, which is not a fix — the room read it and said "the
+   interface still scrolls". Fit is not scroll; a panel on a wall has nobody to scroll it.
+
+   So this is a SIZING fix, which is the knob the room explicitly offered ("you can change
+   size of font/menu/labels of properties"). The clamp tops out at 17px: enough for a 10-foot
+   read at 1080p, small enough that the heading, the sentence and four property tiles fit the
+   row the stage gives them at every size a panel is mounted at. `overflow` stays VISIBLE
+   everywhere on purpose — no scrolling, no clipping, and if a future edit ever makes the
+   content too tall it overflows and is MEASURED, rather than being quietly absorbed by a
+   scrollbar or quietly cut off. tests/layout.test.mjs fails on either. */
+html{font-size:clamp(11px,0.92vw,17px)}
+.stage{height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:1.2rem 1.6rem;gap:.8rem}
 header{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
-.brand{font-size:2.2rem;font-weight:700;color:var(--gold);letter-spacing:.02em}
+.brand{font-size:2.1rem;font-weight:700;color:var(--gold);letter-spacing:.02em}
 .tag{font-size:1.15rem;color:var(--dim)}
 .spacer{flex:1}
 .status{font-size:1.05rem;color:var(--dim)}
 .status b{color:var(--cream);font-weight:600}
 .status.on{color:var(--gold-hi)}
 /* QR left, details right — at EVERY size, which is what the room asked for.
-   `align-items:start` rather than `center`: centring a column that is TALLER than its row
-   pushes half the excess past the bottom edge, which is how the property tiles ended up
-   behind the footer. `min-height:0` on both children is what lets the grid row actually
-   constrain them.
-   `overflow:auto`, NOT `hidden`. Measured at 1366x768, `main`'s content (the QR/board row
-   plus the picker's own row, which spans both columns) was taller than the row the stage
-   gave it, and `hidden` cut the excess off — the details were not shrunk and not reachable,
-   they were gone. A scroll container is the honest answer: if a panel is ever too short, the
-   details can still be reached. Nothing here hides content. */
-main{display:grid;grid-template-columns:auto 1fr;gap:1.6rem;align-items:start;min-height:0;overflow:auto}
-.joinbox{display:flex;flex-direction:column;align-items:center;gap:.9rem;min-height:0}
-.qr{background:#F2E9D6;padding:1rem;border-radius:1rem;line-height:0;box-shadow:0 1rem 3rem #0008}
-/* Size the symbol against the viewport, not just its own height, or the URL
-   under it gets pushed into the footer on a 16:9 panel. `28vw` as well as `34vh`, because
-   the QR column is `auto` and a symbol wider than its column widens the whole row. */
-.qr canvas{display:block;width:min(34vh,28vw,16rem);height:auto;image-rendering:pixelated}
-.joinlabel{font-size:1.4rem;color:var(--gold-hi);font-weight:650;text-align:center}
-.joinurl{font-size:1rem;color:var(--dim);text-align:center;word-break:break-all;
-  max-width:20rem;line-height:1.35}
-.board{display:flex;flex-direction:column;gap:.8rem;min-width:0;min-height:0;overflow-y:auto;
-  padding-right:.3rem}
-.board h1{margin:0;font-size:1.9rem;font-weight:650}
-.board p{margin:0;font-size:1.1rem;color:var(--dim);max-width:56ch;line-height:1.45}
-.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:.7rem;margin-top:.2rem}
-.slot{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:.8rem .9rem;
-  display:flex;flex-direction:column;gap:.25rem}
-.slot .k{font-size:.8rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
-.slot .v{font-size:1.2rem;font-weight:600}
+   `align-items:start` rather than `center`: centring a column taller than its row pushes
+   half the excess past the bottom edge, which is how the property tiles ended up behind the
+   footer. `min-height:0` on both children is what lets the grid row actually constrain them,
+   and `overflow:visible` is deliberate: no scrolling, no clipping, and any future overflow is
+   visible to the measurement instead of being absorbed by the box. */
+main{display:grid;grid-template-columns:auto 1fr;gap:1.2rem;align-items:start;min-height:0;overflow:visible}
+.joinbox{display:flex;flex-direction:column;align-items:center;gap:.7rem;min-height:0}
+.qr{background:#F2E9D6;padding:.8rem;border-radius:1rem;line-height:0;box-shadow:0 1rem 3rem #0008}
+/* Size the symbol against the VIEWPORT, not against the root type size. It used to be capped
+   in `rem`, so shrinking the type to make the details fit shrank the scan code with it — and
+   a scan code is the one thing on this screen that has to be big enough to read from across a
+   room. The details column takes what is left, which is exactly what `1fr` is for. */
+.qr canvas{display:block;width:min(38vh,26vw,30rem);height:auto;image-rendering:pixelated}
+.joinlabel{font-size:1.35rem;color:var(--gold-hi);font-weight:650;text-align:center}
+.joinurl{font-size:.95rem;color:var(--dim);text-align:center;word-break:break-all;
+  max-width:20rem;line-height:1.3}
+.board{display:flex;flex-direction:column;gap:.6rem;min-width:0;min-height:0;overflow:visible}
+.board h1{margin:0;font-size:1.75rem;font-weight:650}
+.board p{margin:0;font-size:1.05rem;color:var(--dim);max-width:60ch;line-height:1.4}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));gap:.55rem;margin-top:.1rem}
+.slot{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:.6rem .8rem;
+  display:flex;flex-direction:column;gap:.15rem}
+.slot .k{font-size:.78rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
+.slot .v{font-size:1.15rem;font-weight:600}
 .slot.wait .v{color:var(--gold)}
 .slot.off .v{color:var(--dim)}
-footer{display:flex;align-items:center;gap:1.2rem;font-size:.95rem;color:var(--dim);flex-wrap:wrap;
-  border-top:1px solid var(--line);padding-top:.8rem}
+footer{display:flex;align-items:center;gap:1.2rem;font-size:.92rem;color:var(--dim);flex-wrap:wrap;
+  border-top:1px solid var(--line);padding-top:.6rem}
 footer .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--dim);display:inline-block;margin-right:.45rem}
 footer .dot.up{background:#5AA469}
 footer .dot.down{background:#8C5A4A}
 /* A portrait panel is 1080px wide: two columns fit there with room to spare, so the layout
-   stays QR-left / details-right instead of stacking. Only the symbol is narrowed, so the
-   details column keeps the width the property tiles need. The rule this replaces collapsed
-   to a single column on ANY portrait or square screen — the opposite of what the room asked
-   for, and measured here as one 992.969px column at 1080x1920. */
-@media (max-aspect-ratio:1/1){ .qr canvas{width:min(30vh,42vw,14rem)} }
-/* A short panel (a 16:9 wall at 768p, or a laptop at 720p) has the least height to give.
-   .slots keeps its tiles beside each other rather than stacking them under the fold. */
-@media (max-height:800px){ .slots{grid-template-columns:repeat(auto-fill,minmax(10rem,1fr))} }
+   stays QR-left / details-right instead of stacking. Only the symbol is narrowed. The rule
+   this replaces collapsed to a single column on ANY portrait screen — the opposite of what
+   the room asked for, and measured as one 992.969px column at 1080x1920. */
+@media (max-aspect-ratio:1/1){ .qr canvas{width:min(30vh,40vw)} }
+/* A short panel has the least height to give, so the tiles sit beside each other rather than
+   stacking under the fold. */
+@media (max-height:820px){ .slots{grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))} }
 
 /* ---- game picker ----
    Sized for a screen read from across a room: no control smaller than a thumb, and

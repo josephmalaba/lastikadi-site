@@ -26,18 +26,24 @@ padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
 .pill:hover{border-color:var(--gold)}
 .pill[disabled]{opacity:.45;cursor:not-allowed}
 .mode{font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
-main{flex:1;display:flex;flex-direction:column;gap:12px;padding:12px;max-width:1100px;margin:0 auto;width:100%}
-.table{flex:1;min-height:220px;border:1px solid var(--line);border-radius:14px;
+main{flex:1;display:flex;flex-direction:column;gap:8px;padding:8px;max-width:1100px;margin:0 auto;width:100%;min-height:0}
+/* NO FLOOR THAT PUSHES CONTENT OFF THE SCREEN. The table and the hand carried min-height
+   220px and 132px; on a 360x640 phone with seven cards that made the document 743px tall in
+   a 640px viewport, so the hand and the footer sat below the fold and the page scrolled. A
+   page you must scroll to reach your own cards is not "fitting" — the same complaint the
+   Founder made about the venue display. The floors now shrink instead, and the measurement
+   asserts the document does NOT scroll. */
+.table{flex:1 1 auto;min-height:0;border:1px solid var(--line);border-radius:14px;
 background:radial-gradient(120% 90% at 50% 0%,#24402F 0%,#1B2C22 55%,#16241C 100%);
-position:relative;display:flex;align-items:center;justify-content:center;padding:16px}
-.tablecenter{display:flex;flex-direction:column;align-items:center;gap:14px}
+position:relative;display:flex;align-items:center;justify-content:center;padding:10px}
+.tablecenter{display:flex;flex-direction:column;align-items:center;gap:10px}
 .status{font-size:14px;color:var(--dim);text-align:center;min-height:20px}
 .status.alert{color:var(--gold-hi)}
 .status.bad{color:var(--danger)}
-.directive{font-size:13px;color:var(--gold);text-align:center;min-height:18px}
-.opp{position:absolute;top:10px;left:14px;font-size:13px;color:var(--dim)}
-.deck{position:absolute;top:10px;right:14px;font-size:13px;color:var(--dim)}
-.hand{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:flex-end;min-height:132px}
+.directive{font-size:12px;color:var(--gold);text-align:center;min-height:16px}
+.opp{position:absolute;top:8px;left:12px;font-size:13px;color:var(--dim)}
+.deck{position:absolute;top:8px;right:12px;font-size:13px;color:var(--dim)}
+.hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:flex-end;min-height:0}
 .card{width:74px;height:108px;border-radius:9px;background:var(--cream);color:#1B2C22;border:2px solid #00000022;
 box-shadow:0 3px 10px #0006;position:relative;display:flex;flex-direction:column;justify-content:space-between;
 padding:6px 7px;cursor:pointer;transition:transform .09s ease;user-select:none}
@@ -71,20 +77,27 @@ button.ghost:hover{border-color:var(--gold)}
 .winner{font-size:22px;color:var(--gold);text-align:center}
 .a11y{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border-top:1px solid var(--line)}
-@media (max-width:420px){.card{width:58px;height:88px}.card .rank{font-size:16px}.card .glyph{font-size:20px}}
-/* A phone held sideways is 360px tall and the three min-heights below (220 + 132) plus the
-   chrome come to 587px, so the controls, the hand and the footer are pushed off the bottom.
-   The page scrolls rather than clipping them, so nothing is lost — but a guest should not
-   have to scroll to reach the cards. Measured at 740x360: document 587 vs viewport 360.
-   The floors shrink here so the table fits without scrolling. */
-@media (max-height:460px){
-  .table{min-height:120px}
-  .hand{min-height:84px}
-  .card{width:52px;height:78px}
-  .card .rank{font-size:15px}.card .glyph{font-size:18px}
-  header{padding:6px 10px}
-  main{gap:6px;padding:6px}
-  footer{padding:4px 10px}
+/* The phone held sideways, and the small phone. Seven cards must be reachable without
+   scrolling and with the controls and the footer still on screen, so the cards shrink and
+   the chrome tightens rather than the page growing a scrollbar. Measured at 740x360 and
+   360x640; tests/layout.test.mjs asserts the document does not scroll at either. */
+@media (max-width:420px){.card{width:48px;height:72px}.card .rank{font-size:14px}.card .glyph{font-size:17px}
+  .card .name{font-size:8px}.card .family{font-size:10px}}
+@media (max-height:700px){
+  .card{width:48px;height:72px}
+  .card .rank{font-size:14px}.card .glyph{font-size:17px}
+  header{padding:5px 10px}
+  main{gap:5px;padding:5px}
+  footer{padding:3px 10px;font-size:11px}
+  button.act{padding:7px 12px;font-size:13px}
+  /* The status and directive lines carried min-heights that, on a 360px-tall screen, pushed
+     the table's own content past its box and into the line below it — measured as a 2.4px
+     intersection between #status and #banner, and between #controls and #pile. They give way
+     here, so nothing touches anything. */
+  .status{min-height:0;font-size:13px}
+  .directive{min-height:0;font-size:11px}
+  .tablecenter{gap:6px}
+  .table{padding:6px}
 }
 </style>
 </head>
