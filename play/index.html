@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#18261D">
-<title>LastiKadi â€” Play Kadi</title>
+<title>LastiKadi — Play Kadi</title>
 <link rel="manifest" href="./site.0e8d4a4e.webmanifest">
 <link rel="icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
 <link rel="apple-touch-icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
@@ -78,10 +78,10 @@ footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border
 
 <main>
   <section class="table" aria-label="Table">
-    <div class="opp" id="opp">Machine â€” 6 cards</div>
-    <div class="deck" id="deck">Deck â€” 41</div>
+    <div class="opp" id="opp">Machine — 6 cards</div>
+    <div class="deck" id="deck">Deck — 41</div>
     <div class="tablecenter">
-      <div class="status" id="status" role="status" aria-live="polite">Startingâ€¦</div>
+      <div class="status" id="status" role="status" aria-live="polite">Starting⬦</div>
       <div class="directive" id="directive"></div>
       <div id="pile" aria-label="Top card"></div>
     </div>
@@ -91,7 +91,7 @@ footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border
 </main>
 
 <footer>
-  Free to play. No prizes. No wagering. Rules by the canonical Kadi engine â€”
+  Free to play. No prizes. No wagering. Rules by the canonical Kadi engine —
   the same engine the Android app uses.
 </footer>
 <div class="a11y" id="live" aria-live="polite"></div>
@@ -110,7 +110,7 @@ const SUITS = {
 };
 const SPECIALS = {
   '2': 'adds 2 to the penalty', '7': 'blocks the next player', '8': 'turns the table',
-  'J': 'goes anywhere, names what follows', Joker: 'wipes the penalty, adds 5 â€” only a Joker answers it',
+  'J': 'goes anywhere, names what follows', Joker: 'wipes the penalty, adds 5 — only a Joker answers it',
 };
 const $ = (id) => document.getElementById(id);
 const Ctor = (typeof KadiRuntime !== 'undefined' && KadiRuntime.KadiRuntimeJs) || null;
@@ -156,7 +156,7 @@ function cardEl(card, state) {
   const special = SPECIALS[card.symbol];
   d.setAttribute('role', 'button');
   d.setAttribute('tabindex', (playable || wild) ? '0' : '-1');
-  d.setAttribute('aria-label', card.cardName.replace(/_/g, ' ') + (special ? ' â€” ' + special : '') +
+  d.setAttribute('aria-label', card.cardName.replace(/_/g, ' ') + (special ? ' — ' + special : '') +
     (wild ? ' (needs a family named)' : ''));
   d.innerHTML = '<div class="rank">' + card.symbol + '</div><div class="glyph">' + suit.glyph +
     '</div><div class="family">' + card.family + '</div><div class="name">' +
@@ -194,25 +194,25 @@ function showFamilyPicker(cardName) {
 
 function render(note, bad) {
   const v = view;
-  $('opp').textContent = 'Machine â€” ' + (v.counts ? (v.counts[String(MACHINE)] ?? '?') : '?') + ' cards';
-  $('deck').textContent = 'Deck â€” ' + (v.drawCount ?? '?');
+  $('opp').textContent = 'Machine — ' + (v.counts ? (v.counts[String(MACHINE)] ?? '?') : '?') + ' cards';
+  $('deck').textContent = 'Deck — ' + (v.drawCount ?? '?');
 
   const st = $('status');
   if (v.over) { st.className = 'status'; st.textContent = ''; }
   else if (bad && note) { st.className = 'status bad'; st.textContent = note; }
   else if (note) { st.className = 'status alert'; st.textContent = note; }
-  else if (v.mustAnnounce) { st.className = 'status alert'; st.textContent = 'One card left â€” announce it before you play.'; }
+  else if (v.mustAnnounce) { st.className = 'status alert'; st.textContent = 'One card left — announce it before you play.'; }
   else if (v.choosingFamily) { st.className = 'status alert'; st.textContent = 'Your Jack names what comes next.'; }
   else if (v.blocked) { st.className = 'status alert'; st.textContent = 'Blocked. Answer with the same card or pass.'; }
   else if (v.penalty > 0) { st.className = 'status alert'; st.textContent = 'You owe a penalty of ' + v.penalty + '. Draw, or add to it.'; }
   else if (v.turnHasPlayed) { st.className = 'status'; st.textContent = 'You have played. Play another of the same value, or finish your turn.'; }
   else if (v.isTurn) { st.className = 'status'; st.textContent = 'Your turn.'; }
-  else { st.className = 'status'; st.textContent = 'Waiting for the machineâ€¦'; }
+  else { st.className = 'status'; st.textContent = 'Waiting for the machine⬦'; }
 
   const dir = [];
   if (v.requestedFamily && v.requestedFamily !== 'CHOICE') dir.push('Requested: ' + v.requestedFamily);
   if (v.direction === -1) dir.push('Direction reversed');
-  $('directive').textContent = dir.join('  Â·  ');
+  $('directive').textContent = dir.join('  ·  ');
 
   const pile = $('pile'); pile.innerHTML = '';
   if (v.topCard) pile.appendChild(cardEl(v.topCard, 'top'));
@@ -240,12 +240,12 @@ function render(note, bad) {
   if (v.over) {
     const msg = document.createElement('div');
     msg.className = 'winner';
-    msg.textContent = v.winnerId === HUMAN ? 'You win â€” Kadi moja!' : 'The machine won this hand.';
+    msg.textContent = v.winnerId === HUMAN ? 'You win — Kadi moja!' : 'The machine won this hand.';
     ctl.appendChild(msg);
     btn('Deal again', () => { busy = true; newLocal().then(() => refresh()).then(() => { busy = false; }); });
     return;
   }
-  if (!v.isTurn) { btn('Machine is thinkingâ€¦', null, true, false); return; }
+  if (!v.isTurn) { btn('Machine is thinking⬦', null, true, false); return; }
   if (v.mustAnnounce) { btn('Announce last card', () => act('announceLastCard')); return; }
   if (v.choosingFamily) { showFamilyPicker(''); return; }
   if (v.canFinish) btn('Finish turn', () => act('finish'), !v.legalCards.length);
@@ -256,10 +256,10 @@ function render(note, bad) {
 $('btn-new').addEventListener('click', async () => { busy = true; await newLocal(); await refresh(); busy = false; });
 $('btn-network').addEventListener('click', async () => {
   busy = true;
-  $('status').textContent = 'Contacting the serverâ€¦';
+  $('status').textContent = 'Contacting the server⬦';
   try {
     await newNetwork();
-    await refresh('Network game â€” the server is authoritative.');
+    await refresh('Network game — the server is authoritative.');
   } catch (e) {
     await newLocal();
     await refresh('The game server is not reachable, so this is offline practice. (' + (e && e.message) + ')', true);
