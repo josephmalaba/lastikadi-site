@@ -55,7 +55,7 @@
  */
 
 import { SERVED } from './identity.777b0687.mjs';
-import { hasStarted } from './waiting.a48eaa74.mjs';
+import { hasStarted } from './waiting.8f28fe40.mjs';
 
 /** Where the table service lives. The only origin this client talks to. */
 export const SERVICE_BASE = 'https://api.lastikadi.com';

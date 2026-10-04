@@ -168,8 +168,8 @@ import { GameHost, LocalAuthority, NetworkAuthority } from './host.e30228b1.mjs'
 import { SERVED, planForLink, planForRuntime } from './identity.777b0687.mjs';
 import {
   OUTCOMES, PLAY_DESCRIPTOR_GAP, POLL_MS, SERVICE_BASE, joinSharedTable, joinVenue,
-} from './session.fd1c129e.mjs';
-import { countdown, readCode, waitPlan } from './waiting.a48eaa74.mjs';
+} from './session.67e60056.mjs';
+import { countdown, readCode, waitPlan } from './waiting.8f28fe40.mjs';
 
 /** The offline engine's own seat LABELS. They are not account ids and never leave this phone. */
 const OFFLINE_HUMAN = 1, OFFLINE_MACHINE = 2;
@@ -182,7 +182,7 @@ const OFFLINE_HUMAN = 1, OFFLINE_MACHINE = 2;
  * code (`?game=kadi&v=0.0.3`) and, when it opens a table for a room to share, the code that
  * names that table (`&code=9KP6ARTDQT`); this is the code that reads both, and the rules
  * about what happens when either is absent, unknown or a different version live in
- * ./identity.777b0687.mjs and ./waiting.a48eaa74.mjs so they are tested rather than inspected.
+ * ./identity.777b0687.mjs and ./waiting.8f28fe40.mjs so they are tested rather than inspected.
  *
  * There is deliberately no default game here. A link that names nothing this client can
  * serve deals nothing, and says so. That is the same standard the venue screen already
@@ -537,7 +537,7 @@ async function startWaiting() {
  * address it on the path that advances machine seats: a numeric game id AND the seat list
  * that id is played with. A started lobby publishes a runtime SESSION id instead, where the
  * seat this client does not hold refuses every account and where no command makes a machine
- * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.fd1c129e.mjs. So a started table with no
+ * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.67e60056.mjs. So a started table with no
  * descriptor is reported as what it is, with the reason, and NOTHING is dealt.
  */
 async function onTableStarted(joined) {

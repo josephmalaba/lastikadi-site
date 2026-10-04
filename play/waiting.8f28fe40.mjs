@@ -257,13 +257,23 @@ export function secondsLeft(lobby, now) {
   return Math.max(0, Math.ceil((lobby.waitDeadline - now) / 1000));
 }
 
-/** `m:ss` for a countdown a person reads at a glance, and it never says a negative time. */
+/**
+ * `MM:SS` for a countdown a person reads at a glance, and it never says a negative time.
+ *
+ * THE SAME TEXT THE VENUE DISPLAY RENDERS, deliberately, down to the padding: the display's
+ * `clockText` in tv/table.mjs computes `Math.max(0, Math.ceil(remainingMs / 1000))` from the
+ * SAME `waitDeadline` field and formats it as two-digit minutes and seconds. Two screens
+ * counting to the same number in two different shapes is the disagreement this file exists to
+ * prevent, and "0:43" beside "00:43" is exactly the kind of difference a room notices. The
+ * one fact — the service's deadline — and the one rendering of it are therefore shared by
+ * construction rather than by coincidence.
+ */
 export function countdown(seconds) {
   if (!Number.isFinite(seconds) || seconds === null) return null;
   const whole = Math.max(0, Math.floor(seconds));
   const minutes = Math.floor(whole / 60);
   const rest = whole % 60;
-  return minutes + ':' + String(rest).padStart(2, '0');
+  return String(minutes).padStart(2, '0') + ':' + String(rest).padStart(2, '0');
 }
 
 /* ------------------------------------------------------------------ what is on screen */
