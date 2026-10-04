@@ -97,6 +97,18 @@
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
+/shogi/authority.ca4a4d6e.mjs
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
+/shogi/rules.0b52a393.mjs
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
+/shogi/site.0cbeea3f.webmanifest
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
 /site.f2e64232.webmanifest
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
@@ -122,6 +134,9 @@
   cache-control: no-cache
 
 /robots.txt
+  cache-control: no-cache
+
+/shogi/index.html
   cache-control: no-cache
 
 /sitemap.xml

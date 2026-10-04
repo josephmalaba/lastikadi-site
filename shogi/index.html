@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F1A14">
+<title>LastiKadi — Shogi</title>
+<link rel="manifest" href="./site.0cbeea3f.webmanifest">
+<link rel="icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<link rel="apple-touch-icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<style>
+:root{--bg:#0F1A14;--panel:#16261D;--line:#2A4033;--gold:#D9A93C;--gold-hi:#F0C766;
+  --cream:#F2E9D6;--dim:#7E9488;--wood:#D9B87C;--grid:#4A3A1E}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--cream);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;align-items:center;padding:18px 14px 40px}
+header{width:100%;max-width:780px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.brand{color:var(--gold);font-weight:700;font-size:20px}
+.tag{color:var(--dim);font-size:14px}
+.spacer{flex:1}
+.pill{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--dim)}
+main{width:100%;max-width:780px}
+.status{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 14px;
+  margin-bottom:12px;font-size:15px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.status b{color:var(--gold-hi)}
+.status .check{color:#E8A33D}
+.wrap{display:flex;justify-content:center;margin:6px 0 14px}
+canvas{background:var(--wood);border-radius:8px;box-shadow:0 8px 26px #0007;touch-action:manipulation;cursor:pointer}
+.controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+button{font:inherit;border:0;border-radius:9px;padding:10px 16px;background:var(--gold);color:#20180A;
+  font-weight:600;cursor:pointer}
+button.quiet{background:transparent;color:var(--cream);border:1px solid var(--line);font-weight:500}
+button:disabled{opacity:.45;cursor:default}
+.promo{display:none;gap:10px;justify-content:center;margin:12px 0 0}
+.promo.on{display:flex}
+.detail{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+  color:var(--dim);font-size:14px}
+.detail .lim{color:#C9A66B}
+footer{margin-top:20px;color:var(--dim);font-size:13px;text-align:center;max-width:660px}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">LastiKadi</span>
+  <span class="tag">Shogi</span>
+  <span class="pill" id="surface">Practice</span>
+  <span class="spacer"></span>
+  <span class="pill" id="engine">engine —</span>
+</header>
+
+<main>
+  <div class="status">
+    <span id="status">Setting up…</span>
+    <span class="spacer"></span>
+    <span id="tally"></span>
+  </div>
+
+  <div class="wrap"><canvas id="board" width="612" height="612" role="img"
+    aria-label="Shogi board, nine by nine"></canvas></div>
+
+  <div class="promo" id="promo">
+    <button id="promote">Promote</button>
+    <button id="stay" class="quiet">Do not promote</button>
+  </div>
+
+  <div class="controls">
+    <button id="new">New game</button>
+    <button id="resign" class="quiet">Resign</button>
+  </div>
+
+  <div class="detail">
+    <p id="hint">Tap one of your pieces, then tap where it should go.</p>
+    <p id="last"></p>
+    <p class="lim" id="limit"></p>
+  </div>
+</main>
+
+<footer>Free to play. No prizes. No wagering. Rules by the LastiKadi Shogi rules module,
+vendored unchanged from the repository that owns them.</footer>
+
+<script type="module">
+import { GameHost } from '../play/host.dbf3483b.mjs';
+import { ShogiAuthority } from './authority.ca4a4d6e.mjs';
+import { SENTE, GOTE, movesFrom } from './rules.0b52a393.mjs';
+
+const SIZE = 9;
+const PAD = 34;
+const STEP = (612 - PAD * 2) / (SIZE - 1);
+const GLYPH = { K: 'K', R: 'R', B: 'B', G: 'G', S: 'S', N: 'N', L: 'L', P: 'P' };
+
+const $ = (id) => document.getElementById(id);
+const canvas = $('board');
+const ctx = canvas.getContext('2d');
+
+let host = null;
+let view = null;
+let selected = null;      // index of the selected own piece
+let destinations = [];    // legal {to, promote} from the selection
+let pendingPromotion = null; // {from, to} when both variants are legal
+
+const xy = (i) => ({ x: PAD + (i % SIZE) * STEP, y: PAD + Math.floor(i / SIZE) * STEP });
+const nearest = (px, py) => {
+  const col = Math.round((px - PAD) / STEP);
+  const row = Math.round((py - PAD) / STEP);
+  if (col < 0 || col >= SIZE || row < 0 || row >= SIZE) return -1;
+  if (Math.abs(PAD + col * STEP - px) > STEP / 2) return -1;
+  if (Math.abs(PAD + row * STEP - py) > STEP / 2) return -1;
+  return row * SIZE + col;
+};
+
+function draw() {
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--wood').trim() || '#D9B87C';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim() || '#4A3A1E';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < SIZE; i++) {
+    ctx.beginPath(); ctx.moveTo(PAD + i * STEP, PAD); ctx.lineTo(PAD + i * STEP, PAD + (SIZE - 1) * STEP); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD, PAD + i * STEP); ctx.lineTo(PAD + (SIZE - 1) * STEP, PAD + i * STEP); ctx.stroke();
+  }
+
+  if (!view) return;
+
+  // Legal destinations for the current selection.
+  const dest = new Map(destinations.map((m) => [m.to, m.promote]));
+  if (selected != null) {
+    const { x, y } = xy(selected);
+    ctx.fillStyle = 'rgba(217,169,60,0.45)';
+    ctx.fillRect(x - STEP / 2 + 2, y - STEP / 2 + 2, STEP - 4, STEP - 4);
+    for (const to of dest.keys()) {
+      const p = xy(to);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(40,90,50,0.55)'; ctx.fill();
+    }
+  }
+
+  const w = STEP * 0.84, h = STEP * 0.88;
+  for (let i = 0; i < view.board.length; i++) {
+    const p = view.board[i];
+    if (!p) continue;
+    const { x, y } = xy(i);
+    ctx.save();
+    ctx.translate(x, y);
+    // Gote's pieces point down the board, Sente's up: the board has a direction.
+    if (p.owner === GOTE) ctx.rotate(Math.PI);
+    ctx.beginPath();
+    const rr = 6;
+    ctx.moveTo(-w / 2 + rr, -h / 2);
+    ctx.lineTo(w / 2 - rr, -h / 2); ctx.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + rr);
+    ctx.lineTo(w / 2, h / 2 - rr); ctx.quadraticCurveTo(w / 2, h / 2, w / 2 - rr, h / 2);
+    ctx.lineTo(-w / 2 + rr, h / 2); ctx.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - rr);
+    ctx.lineTo(-w / 2, -h / 2 + rr); ctx.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + rr, -h / 2);
+    ctx.closePath();
+    ctx.fillStyle = p.promoted ? '#E8C88A' : '#F5E6C8';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = p.promoted ? '#B4551F' : (p.owner === SENTE ? '#2A2A2A' : '#6A5A3A');
+    ctx.stroke();
+    ctx.fillStyle = p.promoted ? '#B4551F' : '#221A0C';
+    ctx.font = `700 ${Math.round(STEP * 0.46)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(GLYPH[p.kind] || '?', 0, 1);
+    ctx.restore();
+  }
+
+  // Mark the last move.
+  if (view.lastMove) {
+    for (const idx of [view.lastMove.from, view.lastMove.to]) {
+      const { x, y } = xy(idx);
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.strokeStyle = '#8A2A2A'; ctx.lineWidth = 2; ctx.stroke();
+    }
+  }
+}
+
+function render() {
+  if (!view) return;
+  draw();
+
+  if (view.over) {
+    const w = view.winnerId === 1 ? 'You win' : view.winnerId === 2 ? 'The machine wins' : 'Draw';
+    const why = view.result?.reason ? ` by ${view.result.reason}` : '';
+    $('status').innerHTML = `<b>${w}</b>${why}`;
+  } else if (view.turnSeat === 1) {
+    const chk = view.inCheck ? ' <span class="check">You are in check.</span>' : '';
+    $('status').innerHTML = `<b>Your turn.</b>${chk}`;
+  } else {
+    $('status').textContent = view.inCheck ? 'The machine is in check…' : 'The machine is thinking…';
+  }
+
+  $('tally').textContent = view.over ? '' : `move ${view.moveNumber + 1} · ${view.legalCount} legal moves`;
+  $('resign').disabled = view.over;
+  $('last').textContent = view.lastMove
+    ? `Last move: ${String.fromCharCode(97 + Math.floor(view.lastMove.from / 9))}${9 - (view.lastMove.from % 9)} → ${String.fromCharCode(97 + Math.floor(view.lastMove.to / 9))}${9 - (view.lastMove.to % 9)}${view.lastMove.promote ? ' (promoted)' : ''}`
+    : '';
+  // Stated on the page rather than left for a player to discover.
+  $('limit').textContent = view.dropsSupported ? '' : 'Drops are not implemented: captured pieces cannot be returned to the board yet.';
+  $('engine').textContent = `engine ${host.authority.ruleVersion}`;
+}
+
+async function refresh() {
+  view = await host.view(1);
+  render();
+}
+
+canvas.addEventListener('click', async (event) => {
+  if (!view || view.over || view.turnSeat !== 1) return;
+  const r = canvas.getBoundingClientRect();
+  const px = (event.clientX - r.left) * (canvas.width / r.width);
+  const py = (event.clientY - r.top) * (canvas.height / r.height);
+  const i = nearest(px, py);
+  if (i < 0) return;
+
+  const mine = view.board[i] && view.board[i].owner === SENTE;
+
+  if (selected != null) {
+    const hits = destinations.filter((m) => m.to === i);
+    if (hits.length === 1) return move(selected, i, hits[0].promote);
+    if (hits.length > 1) {
+      // Both promoting and not promoting are legal, so the player chooses. Guessing
+      // here would silently change the game.
+      pendingPromotion = { from: selected, to: i };
+      $('promo').classList.add('on');
+      return;
+    }
+  }
+
+  if (mine) {
+    selected = i;
+    destinations = movesFrom(host.authority.state, i);
+    $('hint').textContent = destinations.length
+      ? `${destinations.length} legal move${destinations.length > 1 ? 's' : ''} for that piece.`
+      : 'That piece has no legal move.';
+    draw();
+  } else {
+    selected = null; destinations = [];
+    draw();
+  }
+});
+
+async function move(from, to, promote) {
+  $('promo').classList.remove('on');
+  pendingPromotion = null;
+  selected = null; destinations = [];
+  const res = await host.act('move', { from, to, promote });
+  if (!res.ok) {
+    $('hint').textContent = res.error;
+    setTimeout(() => { $('hint').textContent = 'Tap one of your pieces, then tap where it should go.'; }, 2600);
+  } else {
+    $('hint').textContent = 'Tap one of your pieces, then tap where it should go.';
+  }
+  await refresh();
+}
+
+$('promote').onclick = () => pendingPromotion && move(pendingPromotion.from, pendingPromotion.to, true);
+$('stay').onclick = () => pendingPromotion && move(pendingPromotion.from, pendingPromotion.to, false);
+
+$('new').onclick = async () => {
+  host = new GameHost(new ShogiAuthority(), { localSeat: 1 });
+  await host.start();
+  selected = null; destinations = []; pendingPromotion = null;
+  $('promo').classList.remove('on');
+  $('hint').textContent = 'Tap one of your pieces, then tap where it should go.';
+  await refresh();
+};
+
+$('resign').onclick = async () => { await host.act('resign'); await refresh(); };
+
+$('new').click();
+</script>
+</body>
+</html>
