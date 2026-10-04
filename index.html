@@ -35,7 +35,7 @@
 <!-- Self-hosted type: no third-party font request, so this page contacts nobody else. -->
 <link rel="preload" href="/assets/fonts/manrope-latin-variable.a30ddcd3.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/fonts.5ee0a843.css">
-<link rel="stylesheet" href="/assets/css/site.c16e6a65.css">
+<link rel="stylesheet" href="/assets/css/site.b9c028ee.css">
 
 <script type="application/ld+json">
 {
@@ -422,7 +422,10 @@
         <p class="kicker">Games</p>
         <h2 id="gamesTitle">What we are building.</h2>
         <p class="section__lede">
-          One game today, built from the rules up. More will follow when they are ready to show.
+          Four games on one shared runtime. Each game's rules live in a single authority
+          that the client consumes rather than reimplements, so a card table and a board
+          can share the same machinery without either keeping a second opinion about what
+          is legal.
         </p>
       </header>
 
@@ -446,6 +449,88 @@
             <li>Platform: Browser build playable; Android in development</li>
             <li>Playable: Yes — practice against the machine</li>
           </ul>
+          <p><a class="btn btn--sm btn--gold" href="/play/">Open Kadi</a></p>
+        </li>
+        <li class="game" data-truth="games/go-preview">
+          <article class="gcard" aria-hidden="true">
+            <span class="gcard__badge">PLAYABLE IN THE BROWSER</span>
+            <div class="gcard__art">
+              <svg viewBox="0 0 120 90" width="120" height="90" role="presentation" focusable="false">
+                <rect x="4" y="4" width="112" height="82" rx="6" fill="#D9B87C" />
+                <g stroke="#4A3A1E" stroke-width="1">
+                  <path d="M24 12V78M44 12V78M64 12V78M84 12V78M104 12V78" />
+                  <path d="M12 24H108M12 42H108M12 60H108" />
+                </g>
+                <circle cx="44" cy="42" r="9" fill="#121212" />
+                <circle cx="84" cy="42" r="9" fill="#F5F2E8" />
+              </svg>
+            </div>
+          </article>
+          <h3>Go</h3>
+          <p class="game__tag">PLAYABLE IN THE BROWSER</p>
+          <p>Nine-by-nine Go against the machine, in the browser. Captures, the ko rule and suicide are enforced by the rules module, and the shared client host drives the board without knowing anything about it. Area scoring is reported; settling which stones are dead is left to the players.</p>
+          <ul class="game__meta">
+            <li>Status: <span class="state state--playable">Playable</span></li>
+            <li>Platform: Browser</li>
+            <li>Playable: Yes — against the machine</li>
+          </ul>
+          <p><a class="btn btn--sm btn--gold" href="/go/">Open Go</a></p>
+        </li>
+        <li class="game" data-truth="games/shogi-preview">
+          <article class="gcard" aria-hidden="true">
+            <span class="gcard__badge">PLAYABLE, NO DROPS YET</span>
+            <div class="gcard__art">
+              <svg viewBox="0 0 120 90" width="120" height="90" role="presentation" focusable="false">
+                <rect x="4" y="4" width="112" height="82" rx="6" fill="#D9B87C" />
+                <g stroke="#4A3A1E" stroke-width="1">
+                  <path d="M32 12V78M60 12V78M88 12V78M12 32H108M12 60H108" />
+                </g>
+                <g fill="#F5E6C8" stroke="#221A0C" stroke-width="1.5">
+                  <path d="M22 16h20l0 16-10 6-10-6z" />
+                  <path d="M50 16h20l0 16-10 6-10-6z" />
+                </g>
+                <g fill="#E8C88A" stroke="#B4551F" stroke-width="1.5">
+                  <path d="M78 58h20l0 16-10 6-10-6z" />
+                </g>
+              </svg>
+            </div>
+          </article>
+          <h3>Shogi</h3>
+          <p class="game__tag">PLAYABLE, NO DROPS YET</p>
+          <p>Japanese chess against the machine. Movement, promotion, check and checkmate all come from the rules module. Drops are not implemented, so a captured piece cannot be returned to the board; the board says so rather than leaving it to be discovered.</p>
+          <ul class="game__meta">
+            <li>Status: <span class="state state--playable">Playable</span></li>
+            <li>Platform: Browser</li>
+            <li>Not yet: Drops</li>
+          </ul>
+          <p><a class="btn btn--sm btn--gold" href="/shogi/">Open Shogi</a></p>
+        </li>
+        <li class="game" data-truth="games/bridge-preview">
+          <article class="gcard" aria-hidden="true">
+            <span class="gcard__badge">PLAYABLE, NO SCORING YET</span>
+            <div class="gcard__art">
+              <svg viewBox="0 0 120 90" width="120" height="90" role="presentation" focusable="false">
+                <rect x="4" y="4" width="112" height="82" rx="6" fill="#0F1A14" />
+                <g fill="#F2E9D6" font-family="system-ui, sans-serif" font-size="30" text-anchor="middle">
+                  <text x="32" y="40">&#9824;</text>
+                  <text x="88" y="40">&#9827;</text>
+                </g>
+                <g fill="#C6553F" font-family="system-ui, sans-serif" font-size="30" text-anchor="middle">
+                  <text x="32" y="74">&#9829;</text>
+                  <text x="88" y="74">&#9830;</text>
+                </g>
+              </svg>
+            </div>
+          </article>
+          <h3>Bridge</h3>
+          <p class="game__tag">PLAYABLE, NO SCORING YET</p>
+          <p>Four-seat Bridge against three machine opponents: an auction that produces a contract, then trick play that follows suit. The rules module decides every call and every card. Scoring, vulnerability and dummy play are not implemented, and the client says so.</p>
+          <ul class="game__meta">
+            <li>Status: <span class="state state--playable">Playable</span></li>
+            <li>Platform: Browser</li>
+            <li>Not yet: Scoring, vulnerability, dummy play</li>
+          </ul>
+          <p><a class="btn btn--sm btn--gold" href="/bridge/">Open Bridge</a></p>
         </li>
       </ul>
     </div>
