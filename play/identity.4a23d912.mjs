@@ -56,14 +56,40 @@
  *              version fact the loaded engine can confirm about itself, and
  *              planForRuntime() makes it do so.
  *   machineAccountId
- *              the account the table service accepts as the non-human opponent seat.
- *              This is a fact about the running service, not about the rules: the seat
- *              rule refuses a machine seat unless the account it names really is a
- *              non-human principal in the account store, and it accepts exactly one
- *              account today. Measured live, not assumed — `machine = 2`, which this
- *              client used to send, is a human account and is REFUSED, so every table
- *              this page ever tried to open was rejected. See
- *              tests/play-identity.test.mjs §4.4 for what is asserted about it.
+ *              the commissioned machine account the table service seats as the opponent.
+ *
+ *              IT CANNOT BE DISCOVERED, and that was measured rather than assumed, because
+ *              the honest alternative was to look it up. Asked of production on
+ *              2026-10-04, as an ordinary signed-in player:
+ *
+ *                GET  /portfolio          200, and it carries no machine, seat or agent
+ *                                         field at all — only games
+ *                GET  /admin/machines     403  operator only
+ *                GET  /admin/dashboard    403  operator only
+ *                GET  /registry/modules   403  operator only
+ *                GET  /deckmaster/leaders 200, 117 accounts, and each entry is
+ *                                         {playerId, username, wins, ...} with NO role or
+ *                                         kind field — so it cannot tell a machine from a
+ *                                         person. (It also should not: see below.)
+ *                POST /lobby              the public resolve route deliberately carries no
+ *                                         account ids ("The public shape carries no account
+ *                                         ids")
+ *
+ *              So there is no player-accessible surface that names the machine, and this
+ *              constant is the honest form of that fact: ONE named number, in ONE place,
+ *              with the reason it cannot be looked up written next to it. It is not the
+ *              next `GAME_ID = 7` — that was a number standing in for an identity nothing
+ *              checked. This one is checked by the service on every visit: the seat rule
+ *              validates it against the account store and refuses the whole table if it is
+ *              wrong, and the refusal names this number so an operator can see what the
+ *              client believed. tests/session.test.mjs fails if the seat is ever
+ *              hard-coded anywhere else, or if a refusal stops naming it.
+ *
+ *              The value: `115`, commissioned 2026-10-04 (`username kadi-machine-1791154794`,
+ *              role MACHINE). The number it replaces, `2`, was a human account; the number
+ *              before that is why the old client could never open a table at all. A seat is
+ *              refused for a human, and — after the seat rule is tightened — for an operator
+ *              account too, so this must stay a non-human principal.
  *
  * If the service ever offers a second game, the entry is added here and the client can
  * serve it; a client whose table has no entry refuses rather than guessing. See
@@ -76,7 +102,7 @@ export const SERVED = Object.freeze({
     engineGameId: 7,
     ruleVersion: '0.0.3',
     runtimeInterfaceVersion: '1.0',
-    machineAccountId: 23,
+    machineAccountId: 115,
   }),
 });
 

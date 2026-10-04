@@ -40,7 +40,7 @@
  * so the whole flow — including each refusal — is exercised by tests/session.test.mjs.
  */
 
-import { SERVED } from './identity.17b1dc91.mjs';
+import { SERVED } from './identity.4a23d912.mjs';
 
 /** Where the table service lives. The only origin this client talks to. */
 export const SERVICE_BASE = 'https://api.lastikadi.com';
@@ -52,6 +52,17 @@ export const OUTCOMES = Object.freeze({
   ID_UNKNOWN: 'id-unknown',
   SEAT_REFUSED: 'seat-refused',
   UNREACHABLE: 'unreachable',
+  /**
+   * The service answered, and the answer was a fault on ITS side: a 5xx, or a status this
+   * client does not recognise as a refusal.
+   *
+   * WHY THIS EXISTS. It was added after watching the real thing: the service briefly
+   * answered `502 Application failed to respond`, and the client reported it as a seat
+   * refusal — sending the reader to look at seat configuration when the fault was a service
+   * that was down. That is the same class of error as "the game server is not reachable"
+   * for a client defect, one layer along, and it is kept apart for the same reason.
+   */
+  SERVICE_FAULT: 'service-fault',
 });
 
 /** How long a single call may take before it is reported as no answer at all. */
@@ -274,7 +285,9 @@ export function judge(result, table) {
     if (seated && !seated.includes(table.machineId)) {
       return {
         outcome: OUTCOMES.SEAT_REFUSED, table: null, state: result.body,
-        error: 'the service opened a table without the machine seat this client asked for',
+        error: 'the service opened a table without the machine seat this client asked for (account '
+          + table.machineId + ')',
+        machineId: table.machineId,
       };
     }
     return { outcome: OUTCOMES.OPEN, table, state: result.body, error: null };
@@ -283,14 +296,31 @@ export function judge(result, table) {
     return { outcome: OUTCOMES.NO_ACCOUNT, table: null, state: null, error: result.error || 'the service did not accept this session' };
   }
   if (result.status === 403) {
-    return { outcome: OUTCOMES.SEAT_REFUSED, table: null, state: null, error: result.error || 'the service refused a seat at this table' };
+    /*
+     * A refused seat is almost always a refused MACHINE seat, because the machine is the
+     * only seat the caller does not hold itself. The client's machine account is a named
+     * constant that cannot be discovered (see play/identity.mjs), so a refusal here is the
+     * service telling this client its constant is wrong — and the number is named in the
+     * sentence so the failure is diagnosable instead of reading "Forbidden".
+     */
+    return {
+      outcome: OUTCOMES.SEAT_REFUSED, table: null, state: null,
+      error: (result.error || 'the service refused a seat at this table')
+        + ' This client names account ' + table.machineId + ' as the commissioned machine seat; '
+        + 'if the service has commissioned a different one, this client needs updating.',
+      machineId: table.machineId,
+    };
   }
   if (result.status === null) {
     return { outcome: OUTCOMES.UNREACHABLE, table: null, state: null, error: result.error };
   }
+  // Anything else: the service answered, but not with a refusal this client recognises. It
+  // is a fault on the service's side and it must not be dressed up as a seat refusal.
   return {
-    outcome: OUTCOMES.SEAT_REFUSED, table: null, state: null,
-    error: result.error || `the service answered HTTP ${result.status}`,
+    outcome: OUTCOMES.SERVICE_FAULT, table: null, state: null,
+    error: `the service answered HTTP ${result.status}`
+      + (result.error ? ' (' + result.error + ')' : '')
+      + ' — that is a fault at the service, not a refusal of this table',
   };
 }
 

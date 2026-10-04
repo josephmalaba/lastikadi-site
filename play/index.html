@@ -122,8 +122,8 @@ footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border
 <script src="./kadi-runtime-browser.8e8a5365.js"></script>
 <script type="module">
 import { GameHost, LocalAuthority, NetworkAuthority } from './host.e30228b1.mjs';
-import { SERVED, planForLink, planForRuntime } from './identity.17b1dc91.mjs';
-import { OUTCOMES, SERVICE_BASE, joinVenue } from './session.005e630e.mjs';
+import { SERVED, planForLink, planForRuntime } from './identity.4a23d912.mjs';
+import { OUTCOMES, SERVICE_BASE, joinVenue } from './session.32a94f2b.mjs';
 
 /** The offline engine's own seat LABELS. They are not account ids and never leave this phone. */
 const OFFLINE_HUMAN = 1, OFFLINE_MACHINE = 2;
@@ -134,7 +134,7 @@ const OFFLINE_HUMAN = 1, OFFLINE_MACHINE = 2;
  * Decided once, from this page's own address, before anything is dealt — not from a
  * constant in this file. The venue display puts the identity it selected into the scan
  * code (`?game=kadi&v=0.0.3`); this is the code that reads it, and the rules about what
- * happens when it is absent, unknown or a different version live in ./identity.17b1dc91.mjs so
+ * happens when it is absent, unknown or a different version live in ./identity.4a23d912.mjs so
  * they are tested rather than inspected.
  *
  * There is deliberately no default game here. A link that names nothing this client can
@@ -228,6 +228,7 @@ const WHY = Object.freeze({
   [OUTCOMES.ID_UNKNOWN]: 'This phone could not establish which account it is, so it cannot claim a seat.',
   [OUTCOMES.SEAT_REFUSED]: 'The table service refused a seat at the table this client asked for.',
   [OUTCOMES.UNREACHABLE]: 'The table service did not answer.',
+  [OUTCOMES.SERVICE_FAULT]: 'The table service answered with a fault of its own.',
 });
 
 /**
@@ -248,6 +249,14 @@ async function failVenue(joined) {
 
   let sentence = WHY[joined.outcome] || 'The table could not be opened.';
   if (joined.error) sentence += ' The service said: ' + joined.error;
+  if (joined.outcome === OUTCOMES.SEAT_REFUSED) {
+    // The machine seat is a named constant that no player-accessible surface publishes (see
+    // play/identity.mjs), so when the service refuses it the number this client believed is
+    // part of the fault report rather than left as "Forbidden".
+    const seat = joined.machineId || (SERVED[identity.game] && SERVED[identity.game].machineAccountId);
+    if (seat) sentence += ' The commissioned machine seat this client names is account ' + seat
+      + '; the service has to accept it, or this client needs updating.';
+  }
   if (joined.outcome === OUTCOMES.UNREACHABLE) {
     let up = null;
     try {
