@@ -59,8 +59,25 @@ export class LocalAuthority extends GameAuthority {
 
   get provenance() { return { kind: 'local', id: 'kadi-runtime-js' }; }
 
+  /**
+   * The loaded runtime's own identity, as the runtime reports it.
+   *
+   * This is the one version fact that does not come from the client's own words: the
+   * bytes that were actually served say which runtime interface they implement. The
+   * play client compares it against the interface version it declares it is pinned to
+   * and refuses to deal if they differ (play/identity.mjs, planForRuntime), so a stale
+   * runtime bundle cannot be played as though it were the declared one.
+   */
+  get identity() {
+    try {
+      const parsed = JSON.parse(this.rt.identityJson());
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch { return null; }
+  }
+
   get ruleVersion() {
-    try { return JSON.parse(this.rt.identityJson()).schemaVersion; } catch { return 'unknown'; }
+    const id = this.identity;
+    return id && typeof id.schemaVersion === 'string' ? id.schemaVersion : 'unknown';
   }
 
   async open() {
@@ -103,6 +120,9 @@ export class LocalAuthority extends GameAuthority {
     return {
       hand: (dto.hand || []).map((c) => c.cardName),
       legalCards: playable,
+      // The offline engine reports legality itself, so the client may mark cards. The
+      // network authority cannot and says so; the page must not treat the two the same.
+      legalReported: true,
       wildCards: needsFamily,
       legalCardsInIsolation: legal,
       topCard: dto.topCard || null,
@@ -155,105 +175,181 @@ export class LocalAuthority extends GameAuthority {
 /* ------------------------------------------------------------------ */
 
 /**
- * the server wire contract, read from its own DTOs:
- *   PlayerRequest      { playerId, gameId, playerCount, machinePlayerIds }
- *   GameActionRequest  { gameId, playerId, cardName, requestedFamily,
- *                        finishTurn, lastCardAnnounced, playerCount,
- *                        machinePlayerIds }
- * and the GameStateDto returned by the interface dependency.
+ * The game server over REST — a BOUND adapter.
  *
- * IMPORTANT, and stated precisely because the two halves differ:
+ * It is constructed with a table that has already been opened (play/session.mjs), and it
+ * never opens one itself. That split is deliberate: opening a table needs an account, the
+ * caller's own numeric id and the commissioned machine seat, and those are facts about the
+ * service rather than about a game. Keeping them in one module that a test can drive end
+ * to end is what stops a half-configured authority from dealing a card.
  *
- * The game server is live at api.lastikadi.com, and multiplayer has been verified
- * end to end against it — two independent accounts signing in, sharing one game,
- * and observing each other's moves, with the server refusing both an illegal card
- * and an attempt to act as another player.
+ * The server wire contract, read from its own DTOs and MEASURED against production on
+ * 2026-10-04 rather than taken from a comment:
  *
- * That verification drove the REST endpoints directly. THIS adapter class has not
- * itself been exercised against the live server, so it must not be presented as
- * working multiplayer until it has been. Two things to settle when it is:
+ *   POST /deckmaster/start, /state, /draw, /finish, /announce, /pass
+ *        PlayerRequest      { playerId, gameId, playerCount, playerIds, machinePlayerIds }
+ *   POST /deckmaster/play
+ *        GameActionRequest  the same, plus { cardName, requestedFamily, finishTurn }
  *
- *   1. `seat` must be the caller's own account id, not an arbitrary seat number.
- *      The server rejects a request whose playerId is not the authenticated
- *      account, so a default of 1 only works for the account with id 1.
- *   2. The game's seats must be sent explicitly (`playerIds`), because the server
- *      otherwise seats 1..playerCount, which names seats no real account holds.
+ * Every one of them requires `Authorization: Bearer <token>`; without it the service
+ * answers 401. The state it returns carries:
+ *
+ *   gameId, playerId, opponentId, started, gameOver, currentPlayerId, topCard,
+ *   lastDirectiveCard, hand (Card[]), drawCount, penaltyCount, requestedFamily,
+ *   penaltyPlayerId, penaltyType, direction, blockedPlayerId, blockedCardType,
+ *   turnHasPlayed, lastCardAnnounced, mustAnnounceLastCard, playerCardCounts,
+ *   machinePlayerIds, winnerId
+ *
+ * TWO THINGS THAT COMMENT USED TO GET WRONG, both of which made this class unusable and
+ * neither of which announced itself:
+ *
+ *   1. `playerId` was the constant 1 and no Authorization header was sent at all, so every
+ *      call was refused. The seat the caller holds is now read from the account, in
+ *      play/session.mjs.
+ *   2. The machine seat was the constant 2. The deployed seat rule refuses a machine seat
+ *      unless the account really is a non-human principal, and account 2 is a human one, so
+ *      the table was refused even after (1) was fixed. The seat is now the account the
+ *      service accepts, declared in play/identity.mjs and measured live.
+ *
+ * WHAT THE SERVER DOES NOT REPORT, stated because the client must not pretend otherwise:
+ * there is no `legalCards` in the state, and no canDraw/canPass/canFinish flags. So this
+ * authority reports `legality: 'attempt'` — the client may not mark a card playable,
+ * because nothing has told it which cards are. Every card is offered as a REQUEST and the
+ * engine's own refusal is what the guest is shown. That is the host contract's own rule
+ * ("client-side rule use is advisory/predictive for network games; the server result is
+ * authoritative") applied honestly, rather than a second opinion about legality computed
+ * here.
  */
 export class NetworkAuthority extends GameAuthority {
+  /** Every game call lives under this prefix on the service. Missing it is a 404, not a game. */
+  static DECKMASTER = '/deckmaster';
+
+  /**
+   * @param {string} baseUrl  the table service origin
+   * @param {{token:string, table:{tableId:number, accountId:number, machineId:number, seats:number[]}}} opts
+   */
   constructor(baseUrl, opts = {}) {
     super();
     this.base = baseUrl.replace(/\/$/, '');
-    this.seat = opts.seat ?? 1;
-    this.gameId = opts.gameId ?? 7;
-    this.playerCount = opts.playerCount ?? 2;
-    this.machinePlayerIds = opts.machinePlayerIds ?? [];
+    this.token = opts.token || null;
+    this.table = opts.table || null;
+    this.seat = this.table ? this.table.accountId : null;
+    this.nextTableId = opts.nextTableId || null;
     this.lastState = null;
     this.reachable = false;
   }
 
   get provenance() { return { kind: 'network', id: this.base }; }
 
-  async #post(path, body) {
-    const r = await fetch(this.base + path, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!r.ok) throw new Error(`${path} -> HTTP ${r.status}`);
-    return r.json();
+  /**
+   * The body every call about this table carries. Identical to the one that opened it:
+   * the service refuses a caller who is not in the seats it names, so a body that
+   * disagreed with the table would be refused rather than silently seating somebody else.
+   */
+  #seats() {
+    return {
+      playerId: this.table.accountId,
+      gameId: this.table.tableId,
+      playerCount: this.table.seats.length,
+      playerIds: this.table.seats.slice(),
+      machinePlayerIds: [this.table.machineId],
+    };
   }
 
+  async #post(path, body, { method = 'POST' } = {}) {
+    const headers = { 'content-type': 'application/json' };
+    if (this.token) headers.authorization = `Bearer ${this.token}`;
+    /*
+     * The `/deckmaster` prefix belongs here, once. It used to be absent from every call —
+     * the adapter posted to /start and /state on the origin, which are not routes, so even
+     * a signed-in call was answered 404 "Not Found". That failure looked like a service
+     * that was down and was reported as one. tests/session.test.mjs §6.1 fails if the
+     * prefix goes missing again.
+     */
+    const r = await fetch(this.base + NetworkAuthority.DECKMASTER + path, {
+      method,
+      headers,
+      body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
+    });
+    let parsed = null;
+    try { parsed = await r.json(); } catch { parsed = null; }
+    if (!r.ok) {
+      // The service's own words, not a code. "Card cannot be played" is a fact about the
+      // game and the guest is owed it verbatim.
+      const reason = parsed && typeof parsed === 'object'
+        ? (parsed.error || parsed.message || null) : null;
+      throw new Error(reason || `${path} -> HTTP ${r.status}`);
+    }
+    return parsed;
+  }
+
+  /**
+   * Is the service able to take game traffic?
+   *
+   * `/readiness` is the endpoint that answers that, and it is public. This used to ask
+   * `/admin/dashboard`, which requires the operator role — so an unsigned-in screen got
+   * 401 every time and the client reported "the game server is not reachable" while the
+   * service was perfectly healthy. Blaming the transport for a client defect is a
+   * measurement failure, and it hid the real one for as long as it did.
+   */
   async probe() {
     try {
-      const r = await fetch(this.base + '/admin/dashboard', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-      this.reachable = r.ok;
+      const r = await fetch(this.base + '/readiness', { method: 'GET' });
+      let up = false;
+      try { const body = await r.json(); up = r.status === 200 && body && body.status === 'UP'; } catch { up = false; }
+      this.reachable = up;
     } catch { this.reachable = false; }
     return this.reachable;
   }
 
+  /** Open means "read the table that was already opened", never "start a new one". */
   async open() {
-    const s = await this.#post('/start', {
-      playerId: this.seat, gameId: this.gameId,
-      playerCount: this.playerCount, machinePlayerIds: this.machinePlayerIds,
-    });
+    const s = await this.#post('/state', this.#seats());
     this.lastState = s;
     return this.#shape(s);
   }
 
   async view(seat) {
-    const s = this.lastState || await this.#post('/state', {
-      playerId: seat, gameId: this.gameId,
-      playerCount: this.playerCount, machinePlayerIds: this.machinePlayerIds,
-    });
+    const s = await this.#post('/state', this.#seats());
     this.lastState = s;
-    return this.#shape(s, seat);
+    return this.#shape(s, seat === undefined ? this.seat : seat);
   }
 
   async act(seat, action, args = {}) {
-    const path = { play: '/play', draw: '/draw', pass: '/pass', finish: '/finish', announce: '/announce', announceLastCard: '/announce' }[action];
+    const path = {
+      play: '/play', draw: '/draw', pass: '/pass', finish: '/finish',
+      announce: '/announce', announceLastCard: '/announce',
+    }[action];
     if (!path) return { ok: false, error: `unknown action ${action}` };
-    const body = {
-      gameId: this.gameId, playerId: seat,
-      playerCount: this.playerCount, machinePlayerIds: this.machinePlayerIds,
-      ...args,
-    };
+    const body = { ...this.#seats(), ...args };
     if (action === 'play' && args.cardName) body.cardName = args.cardName;
     if (args.requestedFamily) body.requestedFamily = args.requestedFamily;
     if (action === 'finish') body.finishTurn = true;
-    const s = await this.#post(path, body);
-    this.lastState = s;
-    return { ok: true, winnerId: s.winnerId ?? 0 };
+    try {
+      const s = await this.#post(path, body);
+      this.lastState = s;
+      return { ok: true, winnerId: s.winnerId ?? 0 };
+    } catch (error) {
+      // A refusal from the engine is an answer, not a failure of the client: the guest is
+      // shown the engine's own sentence and the board is re-read.
+      return { ok: false, error: (error && error.message) || 'the service refused that move' };
+    }
   }
 
   #shape(s, seat) {
+    const me = seat === undefined || seat === null ? this.seat : seat;
+    const names = (s.hand || []).map((card) => (typeof card === 'string' ? card : card && card.cardName)).filter(Boolean);
     return {
-      hand: s.hand || [],
-      legalCards: s.legalCards || [],
+      hand: names,
+      // Not reported by this authority. See the class comment: an empty list here would
+      // read as "nothing is playable", which is a claim the server never made.
+      legalCards: [],
+      legalReported: false,
       topCard: s.topCard || null,
       turnHasPlayed: !!s.turnHasPlayed,
       mustAnnounce: !!s.mustAnnounceLastCard,
-      blocked: s.blockedPlayerId === (seat ?? this.seat),
-      penalty: s.penaltyPlayerId === (seat ?? this.seat) ? (s.penaltyCount || 0) : 0,
+      blocked: s.blockedPlayerId === me,
+      penalty: s.penaltyPlayerId === me ? (s.penaltyCount || 0) : 0,
       request: s.requestedFamily || '',
       over: !!s.gameOver,
       winnerId: s.winnerId ?? 0,
@@ -261,7 +357,7 @@ export class NetworkAuthority extends GameAuthority {
       counts: s.playerCardCounts || {},
       direction: s.direction ?? 1,
       requestedFamily: s.requestedFamily || '',
-      isTurn: s.currentPlayerId === (seat ?? this.seat),
+      isTurn: s.currentPlayerId === me,
       currentSeat: s.currentPlayerId,
     };
   }

@@ -19,64 +19,141 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--cream);
   overflow:hidden;-webkit-font-smoothing:antialiased}
 /* Everything here is sized for a 10-foot viewing distance: a TV across a room,
    not a phone in a hand. The whole layout scales from one root value so a
-   Hisense panel at 1080p and a laptop at 720p both read correctly. */
-html{font-size:clamp(14px,1.55vw,30px)}
-.stage{height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:2.2rem 2.6rem;gap:1.4rem}
+   Hisense panel at 1080p and a laptop at 720p both read correctly.
+
+   MEASURED, NOT GUESSED. The clamp used to top out at 30px, and at that size the details
+   column (the heading, the sentence and the four property tiles) was 708px tall inside a
+   698px row at 1920x1080, 506px inside 495px at 1366x768, and 474px inside 545px at
+   1280x800. `main` had `overflow:hidden`, so what did not fit was not scrolled and not
+   shrunk — it was cut off, over the footer: the QR, the board, the property tiles and the
+   footer all intersected, and `.slots` sat 343px below the fold at 1080p. The Founder
+   reported it as "the details don't fit on the screen - some overlap or are hidden", and
+   that is exactly what the numbers say. The cap is now 22px. */
+html{font-size:clamp(13px,1.25vw,22px)}
+.stage{height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:1.6rem 2rem;gap:1rem}
 header{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
-.brand{font-size:2.4rem;font-weight:700;color:var(--gold);letter-spacing:.02em}
+.brand{font-size:2.2rem;font-weight:700;color:var(--gold);letter-spacing:.02em}
 .tag{font-size:1.15rem;color:var(--dim)}
 .spacer{flex:1}
 .status{font-size:1.05rem;color:var(--dim)}
 .status b{color:var(--cream);font-weight:600}
 .status.on{color:var(--gold-hi)}
-main{display:grid;grid-template-columns:auto 1fr;gap:3rem;align-items:center;min-height:0;overflow:hidden}
-.joinbox{display:flex;flex-direction:column;align-items:center;gap:1.1rem;min-height:0}
-.qr{background:#F2E9D6;padding:1.1rem;border-radius:1rem;line-height:0;box-shadow:0 1rem 3rem #0008}
+/* QR left, details right — at EVERY size, which is what the room asked for.
+   `align-items:start` rather than `center`: centring a column that is TALLER than its row
+   pushes half the excess past the bottom edge, which is how the property tiles ended up
+   behind the footer. `min-height:0` on both children is what lets the grid row actually
+   constrain them.
+   `overflow:auto`, NOT `hidden`. Measured at 1366x768, `main`'s content (the QR/board row
+   plus the picker's own row, which spans both columns) was taller than the row the stage
+   gave it, and `hidden` cut the excess off — the details were not shrunk and not reachable,
+   they were gone. A scroll container is the honest answer: if a panel is ever too short, the
+   details can still be reached. Nothing here hides content. */
+main{display:grid;grid-template-columns:auto 1fr;gap:1.6rem;align-items:start;min-height:0;overflow:auto}
+.joinbox{display:flex;flex-direction:column;align-items:center;gap:.9rem;min-height:0}
+.qr{background:#F2E9D6;padding:1rem;border-radius:1rem;line-height:0;box-shadow:0 1rem 3rem #0008}
 /* Size the symbol against the viewport, not just its own height, or the URL
-   under it gets pushed into the footer on a 16:9 panel. */
-.qr canvas{display:block;width:min(42vh,40vw,22rem);height:auto;image-rendering:pixelated}
-.joinlabel{font-size:1.5rem;color:var(--gold-hi);font-weight:650;text-align:center}
-.joinurl{font-size:1.1rem;color:var(--dim);text-align:center;word-break:break-all;
-  max-width:22rem;line-height:1.35}
-.board{display:flex;flex-direction:column;gap:1.1rem;min-width:0}
-.board h1{margin:0;font-size:2.1rem;font-weight:650}
-.board p{margin:0;font-size:1.15rem;color:var(--dim);max-width:46ch;line-height:1.5}
-.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.9rem;margin-top:.4rem}
-.slot{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:1rem 1.1rem;
-  display:flex;flex-direction:column;gap:.35rem}
-.slot .k{font-size:.85rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
-.slot .v{font-size:1.35rem;font-weight:600}
+   under it gets pushed into the footer on a 16:9 panel. `28vw` as well as `34vh`, because
+   the QR column is `auto` and a symbol wider than its column widens the whole row. */
+.qr canvas{display:block;width:min(34vh,28vw,16rem);height:auto;image-rendering:pixelated}
+.joinlabel{font-size:1.4rem;color:var(--gold-hi);font-weight:650;text-align:center}
+.joinurl{font-size:1rem;color:var(--dim);text-align:center;word-break:break-all;
+  max-width:20rem;line-height:1.35}
+.board{display:flex;flex-direction:column;gap:.8rem;min-width:0;min-height:0;overflow-y:auto;
+  padding-right:.3rem}
+.board h1{margin:0;font-size:1.9rem;font-weight:650}
+.board p{margin:0;font-size:1.1rem;color:var(--dim);max-width:56ch;line-height:1.45}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:.7rem;margin-top:.2rem}
+.slot{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:.8rem .9rem;
+  display:flex;flex-direction:column;gap:.25rem}
+.slot .k{font-size:.8rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
+.slot .v{font-size:1.2rem;font-weight:600}
 .slot.wait .v{color:var(--gold)}
 .slot.off .v{color:var(--dim)}
-footer{display:flex;align-items:center;gap:1.4rem;font-size:1rem;color:var(--dim);flex-wrap:wrap;
-  border-top:1px solid var(--line);padding-top:1.1rem}
+footer{display:flex;align-items:center;gap:1.2rem;font-size:.95rem;color:var(--dim);flex-wrap:wrap;
+  border-top:1px solid var(--line);padding-top:.8rem}
 footer .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--dim);display:inline-block;margin-right:.45rem}
 footer .dot.up{background:#5AA469}
 footer .dot.down{background:#8C5A4A}
-@media (max-aspect-ratio:1/1){ main{grid-template-columns:1fr;gap:1.6rem} .qr canvas{width:min(34vh,20rem)} }
+/* A portrait panel is 1080px wide: two columns fit there with room to spare, so the layout
+   stays QR-left / details-right instead of stacking. Only the symbol is narrowed, so the
+   details column keeps the width the property tiles need. The rule this replaces collapsed
+   to a single column on ANY portrait or square screen — the opposite of what the room asked
+   for, and measured here as one 992.969px column at 1080x1920. */
+@media (max-aspect-ratio:1/1){ .qr canvas{width:min(30vh,42vw,14rem)} }
+/* A short panel (a 16:9 wall at 768p, or a laptop at 720p) has the least height to give.
+   .slots keeps its tiles beside each other rather than stacking them under the fold. */
+@media (max-height:800px){ .slots{grid-template-columns:repeat(auto-fill,minmax(10rem,1fr))} }
+
+/* ---- game picker ----
+   Sized for a screen read from across a room: no control smaller than a thumb, and
+   every state distinguishable by more than colour alone. */
+.picker{grid-column:1/-1;border:1px solid var(--line);border-radius:.9rem;padding:1rem 1.1rem;background:#121E18}
+.picker__head{display:flex;align-items:baseline;gap:.9rem;flex-wrap:wrap;margin-bottom:.7rem}
+.picker__label{font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.picker__state{font-size:.95rem;font-weight:650;border:1px solid var(--line);border-radius:.5rem;
+  padding:.22rem .7rem;color:var(--cream);background:#0B1410}
+/* Seven states, told apart by a word first. The border style and colour are a second
+   signal on top of the word, never the signal on their own: a room read from across
+   the room cannot see a tint, and a person who cannot distinguish the tint must still
+   be able to read whether there is a game to play or a service to ring about. */
+.picker__state[data-state="loading"]{border-style:dashed;color:var(--dim)}
+.picker__state[data-state="ready"]{border-color:var(--gold);color:var(--gold-hi)}
+.picker__state[data-state="empty"],
+.picker__state[data-state="none-available"],
+.picker__state[data-state="unroutable"]{border-style:dotted;color:#C9A66B}
+.picker__state[data-state="unreachable"],
+.picker__state[data-state="unreadable"]{border-color:#8C5A4A;color:#E0A98F}
+.picker__games{display:flex;flex-wrap:wrap;gap:.6rem}
+.picker__game{font:inherit;font-size:1.05rem;border:1px solid var(--line);background:#0B1410;color:var(--cream);
+  border-radius:.6rem;padding:.7rem 1.1rem;cursor:pointer;text-align:left;min-width:8.5rem}
+.picker__game:hover:not([disabled]){border-color:var(--gold)}
+.picker__game[aria-selected="true"]{border-color:var(--gold);background:#1C2A1F;box-shadow:inset 0 0 0 1px var(--gold)}
+/* A game the service does not offer is still shown, with the reason under it — the room
+   has to be able to tell "the operator switched it off" from "the screen is broken".
+   The dashed edge says "not selectable" without relying on colour or on the cursor. */
+.picker__game[disabled]{opacity:.8;cursor:not-allowed;border-style:dashed}
+.picker__game small{display:block;color:var(--dim);font-size:.78rem;margin-top:.2rem}
+.picker__game[disabled] small{color:#C9A66B}
+.picker__note{margin-top:.7rem;font-size:.92rem;color:var(--dim);max-width:70ch;line-height:1.45}
+.picker__note.warn{color:#C9A66B}
+.picker__detail{margin-top:.35rem;font-size:.8rem;color:var(--dim);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}
+.picker__detail[hidden]{display:none}
+.qr[hidden]{display:none}
 </style>
 </head>
 <body>
 <div class="stage">
   <header>
     <span class="brand">LastiKadi</span>
-    <span class="tag" id="venueTag">Kadi at the table</span>
+    <span class="tag" id="venueTag">LastiKadi at the table</span>
     <span class="spacer"></span>
     <span class="status" id="clock"></span>
   </header>
 
   <main>
+    <div class="picker" id="picker" data-state="loading">
+      <div class="picker__head">
+        <span class="picker__label">Choose a game</span>
+        <span class="picker__state" id="pickerState" data-state="loading">… Checking</span>
+      </div>
+      <div class="picker__games" id="games" role="listbox" aria-label="Games this venue can host" aria-busy="true"></div>
+      <div class="picker__note" id="pickerNote" role="status">Checking which games this table service can host…</div>
+      <div class="picker__detail" id="pickerDetail" hidden></div>
+    </div>
+
     <div class="joinbox">
-      <div class="qr"><canvas id="qr" width="1" height="1" role="img" aria-label="Scan to join a Kadi table"></canvas></div>
-      <div class="joinlabel">Scan to play</div>
+      <div class="qr" id="qrBox" hidden><canvas id="qr" width="1" height="1" role="img" aria-label="No game to open — nothing to scan"></canvas></div>
+      <div class="joinlabel" id="joinLabel">Checking the list of games…</div>
       <div class="joinurl" id="joinUrl"></div>
     </div>
 
     <div class="board">
-      <h1 id="headline">Start a table</h1>
+      <h1 id="headline">Play at this table</h1>
       <p id="blurb">
-        Scan the code with a phone to open Kadi. Free to play, no prizes, no wagering,
-        no account. Play against the machine or pass the phone around the table.
+        Scan the code with a phone to open the game this screen has selected. Free to play,
+        no prizes, no wagering, no account. Play against the machine or pass the phone
+        around the table.
       </p>
       <div class="slots" id="slots"></div>
     </div>
@@ -91,8 +168,15 @@ footer .dot.down{background:#8C5A4A}
 
 <script type="module">
 import { matrix } from './qr.28204555.mjs';
+import { STATES, planFor, qrPlan, readPortfolio, readSelectionFragment, renderPicker, selectionFragment } from './portfolio.16f1ebf8.mjs';
 
-const JOIN_URL = 'https://lastikadi.com/play/';
+/*
+ * This screen talks to exactly one origin, and reads exactly one thing from it: the
+ * portfolio. There is no game list in this file and no default game. A venue display
+ * that opens a game it has not been told about is the failure this page exists to
+ * avoid, because a person standing at the table cannot tell a switched-off game from a
+ * screen that is simply broken.
+ */
 const TABLE_SERVICE = 'https://api.lastikadi.com';
 
 const $ = (id) => document.getElementById(id);
@@ -161,35 +245,134 @@ async function checkService() {
   dot.className = 'dot ' + (up ? 'up' : 'down');
   if (up) {
     txt.textContent = 'Table service online';
-    $('headline').textContent = 'Tables at this venue';
     renderSlots([
       { label: 'Service', value: 'Online', state: 'wait' },
       { label: 'Open tables', value: '—' },
       { label: 'Players', value: '—' },
     ]);
   } else {
-    // Be honest about what is and is not available: the game itself works with
-    // no service at all, which is the point of an offline-first table game.
-    txt.textContent = 'Table service not reachable — offline play only';
-    $('headline').textContent = 'Start a table';
+    /*
+     * This probe answers one question — is the service up — and it is worded as exactly
+     * that, nothing more. It deliberately does not say anything about which games exist:
+     * the picker is the only part of this screen entitled to say that, and it says it
+     * from the portfolio. Two probes, two claims, neither borrowed from the other.
+     *
+     * The earlier wording here was "offline play only", which belonged to a screen that
+     * always had a game to offer. This screen offers a game only once the service has
+     * named one, so that sentence is gone rather than left to contradict the picker.
+     */
+    txt.textContent = 'Could not confirm the table service is up';
     renderSlots([
-      { label: 'Rules engine', value: 'Ready' },
-      { label: 'Play mode', value: 'Offline' },
-      { label: 'Service', value: 'Unavailable', state: 'off' },
+      { label: 'Service', value: 'Unconfirmed', state: 'off' },
+      { label: 'Open tables', value: '—' },
+      { label: 'Players', value: '—' },
     ]);
   }
   return up;
 }
 
-drawQr($('qr'), JOIN_URL);
-$('joinUrl').textContent = JOIN_URL.replace(/^https?:\/\//, '');
+/* ---- game selection ----
+ *
+ * Everything about which games exist, which of them can be opened and what a scan
+ * carries is decided in ./portfolio.16f1ebf8.mjs, from the table service's own answer, and is
+ * testable without a browser. This page contributes the network call, the canvas, the
+ * clock and the click — and no decisions.
+ *
+ * The one rule the whole arrangement exists to keep: nothing here can render a game as
+ * selectable unless the portfolio says it is available. `gameButton()` binds `disabled`
+ * to the plan's `selectable` and to nothing else, and tests/tv-portfolio.test.mjs fails
+ * if an unavailable game ever comes out of that path clickable.
+ */
+
+const ui = {
+  panel: $('picker'),
+  chip: $('pickerState'),
+  games: $('games'),
+  note: $('pickerNote'),
+  detail: $('pickerDetail'),
+  venueTag: $('venueTag'),
+  joinLabel: $('joinLabel'),
+};
+const qrBox = $('qrBox');
+const qrCanvas = $('qr');
+const joinUrl = $('joinUrl');
+
+/*
+ * The chosen game survives a reload. A venue screen is left on for days and reloaded by
+ * whoever finds it, and re-picking the first game the service lists would quietly swap
+ * the game under a code somebody already scanned — a different table from the one the
+ * person is standing at. So the choice rides on this page's own address and is read back
+ * before the portfolio is even fetched.
+ */
+let chosen = readSelectionFragment(location.hash);
+let outcome = { state: STATES.LOADING, games: [], detail: '' };
+let plan = planFor(outcome, chosen);
+
+function paint(next) {
+  plan = next;
+  renderPicker(document, ui, plan);
+
+  const scan = qrPlan(plan);
+  if (scan.show) {
+    drawQr(qrCanvas, scan.url);
+    qrBox.hidden = false;
+    joinUrl.textContent = scan.text;
+  } else {
+    // No verified game, no scan code. A code left pointing at a game this screen can no
+    // longer vouch for is a link to a table nobody opened.
+    qrBox.hidden = true;
+    joinUrl.textContent = '';
+  }
+  qrCanvas.setAttribute('aria-label', scan.ariaLabel);
+
+  if (plan.selection) {
+    // The carried choice becomes whatever the screen actually shows, so a sentence about
+    // a game that was replaced is said once rather than every five minutes.
+    chosen = { gameId: plan.selection.gameId, ruleVersion: plan.selection.ruleVersion };
+    const carried = selectionFragment(plan.selection);
+    if (carried !== location.hash) {
+      // The address is the page's own state, not somewhere the back button should go.
+      // When there is no selection it is left alone: it still records what was chosen,
+      // which is what lets the choice come back when the service does.
+      history.replaceState(null, '', location.pathname + location.search + carried);
+    }
+  }
+  return plan;
+}
+
+function select(gameId) {
+  const card = plan.games.find((g) => g.gameId === gameId);
+  // Belt and braces on the one rule: the click is refused unless the plan itself says
+  // this game is selectable, so nothing can reach `chosen` past the portfolio.
+  if (!card || card.selectable !== true) return;
+  paint(planFor(outcome, { gameId }));
+}
+
+$('games').addEventListener('click', (event) => {
+  const target = event.target;
+  const card = target && typeof target.closest === 'function' ? target.closest('.picker__game') : null;
+  if (card && card.dataset && card.dataset.gameId) select(card.dataset.gameId);
+});
+
+async function loadPortfolio() {
+  // Handed a function rather than the bare global, so the reader never depends on `this`
+  // and the tests can hand it a stub.
+  outcome = await readPortfolio((url, init) => fetch(url, init));
+  paint(planFor(outcome, chosen));
+}
+
+paint(plan);
 $('build').textContent = 'tv.lastikadi.com';
 tick();
 setInterval(tick, 20000);
 checkService();
+loadPortfolio();
 // Re-check politely: a venue screen left on all day should notice a service
 // coming up without hammering it.
 setInterval(checkService, 60000);
+// The portfolio changes when an operator installs or switches a game, so a long-lived
+// screen re-reads it too rather than showing yesterday's list until someone reboots it.
+setInterval(loadPortfolio, 300000);
 </script>
 </body>
 </html>
