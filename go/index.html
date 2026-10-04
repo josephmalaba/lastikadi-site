@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F1A14">
+<title>LastiKadi — Go</title>
+<link rel="manifest" href="./site.5312e302.webmanifest">
+<link rel="icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<link rel="apple-touch-icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<style>
+:root{--bg:#0F1A14;--panel:#16261D;--line:#2A4033;--gold:#D9A93C;--gold-hi:#F0C766;
+  --cream:#F2E9D6;--dim:#7E9488;--board:#D9B87C;--grid:#4A3A1E}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--cream);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;align-items:center;padding:18px 14px 40px}
+header{width:100%;max-width:760px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.brand{color:var(--gold);font-weight:700;font-size:20px}
+.tag{color:var(--dim);font-size:14px}
+.spacer{flex:1}
+.pill{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--dim)}
+main{width:100%;max-width:760px}
+.status{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 14px;
+  margin-bottom:12px;font-size:15px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.status b{color:var(--gold-hi)}
+.status .warn{color:#E08A6A}
+.wrap{display:flex;justify-content:center;margin:6px 0 14px}
+/* The board is drawn on a canvas so the grid stays crisp and the hit-testing is
+   exact; a DOM grid of 81 cells would need the same maths anyway. */
+canvas{background:var(--board);border-radius:8px;box-shadow:0 8px 26px #0007;touch-action:manipulation;cursor:pointer}
+.controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+button{font:inherit;border:0;border-radius:9px;padding:10px 16px;background:var(--gold);color:#20180A;
+  font-weight:600;cursor:pointer}
+button.quiet{background:transparent;color:var(--cream);border:1px solid var(--line);font-weight:500}
+button:disabled{opacity:.45;cursor:default}
+.detail{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+  color:var(--dim);font-size:14px}
+.detail code{background:#0A1410;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+footer{margin-top:20px;color:var(--dim);font-size:13px;text-align:center;max-width:640px}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">LastiKadi</span>
+  <span class="tag">Go</span>
+  <span class="pill" id="surface">Practice</span>
+  <span class="spacer"></span>
+  <span class="pill" id="engine">engine —</span>
+</header>
+
+<main>
+  <div class="status">
+    <span id="status">Setting up…</span>
+    <span class="spacer"></span>
+    <span id="tally"></span>
+  </div>
+
+  <div class="wrap"><canvas id="board" width="612" height="612" role="img"
+    aria-label="Go board, nine by nine"></canvas></div>
+
+  <div class="controls">
+    <button id="new">New game</button>
+    <button id="pass" class="quiet">Pass</button>
+    <button id="resign" class="quiet">Resign</button>
+  </div>
+
+  <div class="detail">
+    <p id="hint">Tap an intersection to play. Capture by surrounding a group's last liberty.</p>
+    <p id="last"></p>
+  </div>
+</main>
+
+<footer>Free to play. No prizes. No wagering. Rules by the LastiKadi Go rules module — the same
+rules the shared game runtime hosts.</footer>
+
+<script type="module">
+import { GameHost } from '../play/host.dbf3483b.mjs';
+import { GoAuthority } from './authority.96e5f630.mjs';
+import { BLACK, WHITE, EMPTY, indexToPoint, pointToIndex, legalMoves } from './rules.02992b3d.mjs';
+
+const SIZE = 9;
+const PAD = 34;
+const STEP = (612 - PAD * 2) / (SIZE - 1);
+const LETTERS = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
+
+const $ = (id) => document.getElementById(id);
+const canvas = $('board');
+const ctx = canvas.getContext('2d');
+
+let host = null;
+let view = null;
+
+const xy = (i) => ({ x: PAD + (i % SIZE) * STEP, y: PAD + Math.floor(i / SIZE) * STEP });
+const nearest = (px, py) => {
+  const col = Math.round((px - PAD) / STEP);
+  const row = Math.round((py - PAD) / STEP);
+  if (col < 0 || col >= SIZE || row < 0 || row >= SIZE) return -1;
+  // Reject taps that are closer to the gap than to the intersection.
+  if (Math.abs(PAD + col * STEP - px) > STEP / 2) return -1;
+  if (Math.abs(PAD + row * STEP - py) > STEP / 2) return -1;
+  return row * SIZE + col;
+};
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--board').trim() || '#D9B87C';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim() || '#4A3A1E';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < SIZE; i++) {
+    ctx.beginPath(); ctx.moveTo(PAD + i * STEP, PAD); ctx.lineTo(PAD + i * STEP, PAD + (SIZE - 1) * STEP); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD, PAD + i * STEP); ctx.lineTo(PAD + (SIZE - 1) * STEP, PAD + i * STEP); ctx.stroke();
+  }
+
+  // Star points, the usual 9x9 hoshi.
+  ctx.fillStyle = '#3A2C14';
+  for (const [r, c] of [[2, 2], [2, 6], [4, 4], [6, 2], [6, 6]]) {
+    ctx.beginPath(); ctx.arc(PAD + c * STEP, PAD + r * STEP, 3.4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  if (!view) return;
+  const stone = STEP * 0.44;
+  const legal = new Set(
+    view.over || view.turnSeat !== 1 ? [] : legalMoves(host.authority.state, BLACK),
+  );
+
+  for (let i = 0; i < view.board.length; i++) {
+    const v = view.board[i];
+    const { x, y } = xy(i);
+    if (v === EMPTY) {
+      // A faint marker on points the human may legally play, so a refused tap is
+      // never a surprise.
+      if (legal.has(i)) {
+        ctx.fillStyle = 'rgba(32,24,10,0.16)';
+        ctx.beginPath(); ctx.arc(x, y, 3.2, 0, Math.PI * 2); ctx.fill();
+      }
+      continue;
+    }
+    ctx.beginPath();
+    ctx.arc(x, y, stone, 0, Math.PI * 2);
+    if (v === BLACK) {
+      const g = ctx.createRadialGradient(x - stone / 3, y - stone / 3, stone / 6, x, y, stone);
+      g.addColorStop(0, '#4A4A4A'); g.addColorStop(1, '#0A0A0A');
+      ctx.fillStyle = g;
+    } else {
+      const g = ctx.createRadialGradient(x - stone / 3, y - stone / 3, stone / 6, x, y, stone);
+      g.addColorStop(0, '#FFFFFF'); g.addColorStop(1, '#C9C4B4');
+      ctx.fillStyle = g;
+    }
+    ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.stroke();
+  }
+
+  // Mark the last move played.
+  if (view.lastMove && view.lastMove.index != null) {
+    const { x, y } = xy(view.lastMove.index);
+    ctx.beginPath(); ctx.arc(x, y, 4.2, 0, Math.PI * 2);
+    ctx.strokeStyle = view.lastMove.colour === BLACK ? '#F0C766' : '#7A2020';
+    ctx.lineWidth = 2; ctx.stroke();
+  }
+}
+
+function render() {
+  if (!view) return;
+  draw();
+
+  const colourName = (c) => (c === BLACK ? 'Black' : 'White');
+  if (view.over) {
+    const w = view.winnerId === 1 ? 'You win' : view.winnerId === 2 ? 'The machine wins' : 'Draw';
+    const why = view.result?.reason === 'resignation' ? 'by resignation'
+      : view.result?.reason === 'area scoring' ? 'on area scoring' : '';
+    $('status').innerHTML = `<b>${w}</b> ${why}`;
+  } else if (view.turnSeat === 1) {
+    $('status').innerHTML = '<b>Your turn.</b> Black to play.';
+  } else {
+    $('status').textContent = 'The machine is thinking…';
+  }
+
+  const sc = view.result && typeof view.result.black === 'number' ? view.result : null;
+  $('tally').innerHTML = sc
+    ? `Black ${sc.black} · White ${sc.white} (komi ${view.komi})`
+    : `${view.empty} empty points · komi ${view.komi}`;
+
+  $('pass').disabled = view.over;
+  $('resign').disabled = view.over;
+  $('last').textContent = view.lastCaptured && view.lastCaptured.length
+    ? `Last move captured ${view.lastCaptured.length} stone${view.lastCaptured.length > 1 ? 's' : ''}: ${view.lastCaptured.join(', ')}`
+    : '';
+  $('engine').textContent = `engine ${host.authority.ruleVersion}`;
+}
+
+async function refresh() {
+  view = await host.view(1);
+  render();
+}
+
+async function play(index) {
+  if (!view || view.over || view.turnSeat !== 1) return;
+  const res = await host.act('play', { index });
+  if (!res.ok) {
+    // The rules decided, and they are allowed to say no. Show it rather than
+    // silently ignoring the tap.
+    $('hint').textContent = res.error;
+    setTimeout(() => { $('hint').textContent = 'Tap an intersection to play. Capture by surrounding a group\'s last liberty.'; }, 2600);
+  }
+  await refresh();
+}
+
+canvas.addEventListener('click', (ev) => {
+  const r = canvas.getBoundingClientRect();
+  const px = (ev.clientX - r.left) * (canvas.width / r.width);
+  const py = (ev.clientY - r.top) * (canvas.height / r.height);
+  const i = nearest(px, py);
+  if (i >= 0) play(i);
+});
+
+$('new').onclick = async () => {
+  host = new GameHost(new GoAuthority({ size: SIZE, komi: 5.5 }), { localSeat: 1 });
+  await host.start();
+  $('hint').textContent = 'Tap an intersection to play. Capture by surrounding a group\'s last liberty.';
+  await refresh();
+};
+
+$('pass').onclick = async () => { await host.act('pass'); await refresh(); };
+$('resign').onclick = async () => { await host.act('resign'); await refresh(); };
+
+$('new').click();
+void pointToIndex; void indexToPoint; void WHITE; void LETTERS;
+</script>
+</body>
+</html>

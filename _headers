@@ -69,6 +69,18 @@
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
+/go/authority.96e5f630.mjs
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
+/go/rules.02992b3d.mjs
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
+/go/site.5312e302.webmanifest
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
 /play/host.dbf3483b.mjs
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
@@ -98,6 +110,9 @@
   x-content-type-options: nosniff
 
 /
+  cache-control: no-cache
+
+/go/index.html
   cache-control: no-cache
 
 /index.html
