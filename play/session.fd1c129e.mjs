@@ -31,6 +31,20 @@
  *                 machine account, so "each gets his own game" is true by construction.
  *   resume()      the same table again, which is what a reload needs.
  *
+ * AND THE SHARED-TABLE HALF, which is a different journey with a different order:
+ *
+ *   resolveLobby()    the code a scan carries, resolved PUBLICLY before sign-in, so a table
+ *                     that does not exist costs a guest nothing and the screen can say which
+ *                     game, which version, how many seats, and how long is left.
+ *   joinLobby()       this phone's own seat at that table, and then the table's state again
+ *                     from the same public route, so the countdown comes from the service.
+ *   joinSharedTable() the two above in the order they must happen, plus the descriptor a
+ *                     started table has to publish before this client can play it.
+ *                     See PLAY_DESCRIPTOR_GAP: a started lobby table is addressed by a
+ *                     runtime session id, where a machine seat never moves and no account
+ *                     but the seat's own may act — measured, not assumed — so a table that
+ *                     has started is its OWN outcome rather than a game.
+ *
  * WHY openTable() IS NOT "START": the earlier client posted the caller's own id and a
  * guessed machine id and treated whatever came back as a game. It never checked that the
  * seat it asked for was the seat it got. Every call here reads the server's answer and
@@ -40,7 +54,8 @@
  * so the whole flow — including each refusal — is exercised by tests/session.test.mjs.
  */
 
-import { SERVED } from './identity.4a23d912.mjs';
+import { SERVED } from './identity.777b0687.mjs';
+import { hasStarted } from './waiting.a48eaa74.mjs';
 
 /** Where the table service lives. The only origin this client talks to. */
 export const SERVICE_BASE = 'https://api.lastikadi.com';
@@ -63,10 +78,77 @@ export const OUTCOMES = Object.freeze({
    * for a client defect, one layer along, and it is kept apart for the same reason.
    */
   SERVICE_FAULT: 'service-fault',
+  /**
+   * The code on the scan is not a table this service knows. `GET /lobby/{code}` is public
+   * and answers `404 {"error":"Unknown or expired join code"}` — measured live — so an
+   * unknown code and an expired one are the same answer from the service and are reported
+   * as the one refusal the service made. It is its own outcome because it is NOT a practice
+   * game and NOT a fault: the link named a table and the table is not there.
+   */
+  CODE_UNKNOWN: 'code-unknown',
+  /**
+   * The table exists and has not started: the state a waiting screen is for. The lobby it
+   * resolved is attached to the outcome, so the countdown is a fact about the service's
+   * answer rather than about this client's clock.
+   */
+  TABLE_WAITING: 'table-waiting',
+  /**
+   * The table has started, and this client does not yet have a way to PLAY it. Kept apart
+   * from every other outcome on purpose, and the reason is measured rather than assumed:
+   * see `PLAY_DESCRIPTOR_GAP` below.
+   */
+  TABLE_STARTED_UNPLAYABLE: 'table-started-unplayable',
 });
+
+/**
+ * WHY A STARTED SHARED TABLE IS ITS OWN OUTCOME, in the service's own measured behaviour.
+ *
+ * A lobby that reaches LIVE is addressed by a RUNTIME SESSION id:
+ *
+ *   POST /lobby/{id}/start -> 200 {"lobbyId":…,"state":"LIVE","gameId":"kadi",
+ *                                  "ruleVersion":"0.0.3","sessionId":"58794c98-…"}
+ *
+ * and its moves go through `POST /runtime/sessions/{sessionId}/execute`. Measured against
+ * production as the account holding seat 1 of a two-human kadi lobby, on 2026-10-04:
+ *
+ *   - `draw` as seat "1" -> 200 status "ok"; the turn advanced 1 -> 2. The table is real and
+ *     it does move.
+ *   - `query`/`execute` as seat "2" -> 403 SEAT_NOT_AUTHORIZED ("You cannot act for another
+ *     player"), so this client cannot act for the other seat either.
+ *   - `execute` `machineTurn` / `playMachineTurn` / `tick` / `advance` -> 200 with
+ *     `["Unsupported command: …"]`, so a machine turn is not a command on this boundary.
+ *   - with the turn on seat 2, nothing moved for 8 seconds.
+ *   - `RuntimeHostService.execute` calls `session.runtime().execute(command)` and nothing
+ *     else, and the shipped `kadi-rule-engine-0.0.3` jar's `KadiGameRuntime` contains no
+ *     `playMachineTurn` at all — it is the `/deckmaster` path's `GameService.advanceMachines`
+ *     that plays machine seats, and that path takes a numeric game id and its own seat list.
+ *
+ * So a lobby-started table cannot be finished by this client: with the turn on the machine's
+ * seat, no account is authorised to act and no command exists that would make it act. THAT is
+ * the gap, it is a property of the deployed service, and this client states it instead of
+ * sitting at a table that will never move again. Reimplementing `advanceMachines` in the
+ * browser is not an option: the machine seat is a different account, the boundary refuses
+ * every account that is not the seat's own, and a client-side machine would be a second rules
+ * authority — the opposite of the host contract this client is built on.
+ */
+export const PLAY_DESCRIPTOR_GAP =
+  'the table started, and this client cannot play it: its moves live at /runtime/sessions/'
+  + '{id}/execute, where the seat this client does not hold refuses every account '
+  + '(403 SEAT_NOT_AUTHORIZED) and where no command makes a machine seat move. The service '
+  + 'that advances machine seats is the /deckmaster path, which is addressed by a numeric '
+  + 'game id and takes its own seat list, and a started lobby does not publish either.';
 
 /** How long a single call may take before it is reported as no answer at all. */
 export const CALL_TIMEOUT_MS = 12000;
+
+/**
+ * How often the waiting screen asks the service what state its table is in.
+ *
+ * The COUNTDOWN is not on this timer: it is computed from the service's `waitDeadline` on
+ * every repaint (see play/waiting.mjs), so a slow or missed poll cannot make the number on
+ * screen wrong. This is only how often the state — JOINABLE, READY, LIVE — is re-read.
+ */
+export const POLL_MS = 2000;
 
 /**
  * A table id for this visit.
@@ -344,4 +426,176 @@ export async function joinVenue(fetchImpl, base, store, game = SERVED.kadi, opti
 
   const opened = await openTable(fetchImpl, base, session.token, accountId, game, options);
   return { ...opened, session, accountId };
+}
+
+/* ------------------------------------------------------------------ the shared table */
+
+/**
+ * Resolve the code a scan carries — BEFORE signing in, and with no token at all.
+ *
+ * `GET /lobby/{joinCode}` is the one public route on this service, and its own documentation
+ * says why: "a phone has to resolve a code BEFORE it can sign in". So this is the first thing
+ * the client does with a link that carries a code, and it is what lets the screen say which
+ * game, which rules version, how many seats and how long is left before any account exists.
+ *
+ * The service's 404 is its own answer — `{"error":"Unknown or expired join code"}`, measured
+ * live — and it becomes `CODE_UNKNOWN` rather than an outage, a refusal of a seat, or a
+ * practice game. A code that cannot be resolved names no table, and a client that invented
+ * one would be inventing somebody else's table.
+ */
+export async function resolveLobby(fetchImpl, base, code) {
+  const trimmed = typeof code === 'string' ? code.trim() : '';
+  if (trimmed === '') return { outcome: OUTCOMES.CODE_UNKNOWN, lobby: null, error: 'this link carries no table code' };
+  const result = await call(fetchImpl, base, '/lobby/' + encodeURIComponent(trimmed), { method: 'GET' });
+  if (result.ok && result.body && typeof result.body === 'object') {
+    return { outcome: OUTCOMES.TABLE_WAITING, lobby: result.body, error: null };
+  }
+  if (result.status === 404) {
+    return {
+      outcome: OUTCOMES.CODE_UNKNOWN, lobby: null,
+      error: result.error || 'the table service does not know that code',
+    };
+  }
+  if (result.status === null) return { outcome: OUTCOMES.UNREACHABLE, lobby: null, error: result.error };
+  return {
+    outcome: OUTCOMES.SERVICE_FAULT, lobby: null,
+    error: `the service answered HTTP ${result.status}` + (result.error ? ' (' + result.error + ')' : '')
+      + ' to the public table lookup — that is a fault at the service, not a bad code',
+  };
+}
+
+/**
+ * Claim this phone's seat at the table the code names, and say what the table is waiting for.
+ *
+ * `join` is the account's OWN action and the only way a seat is taken (the service states
+ * that as a rule and enforces it). A caller that already holds a seat gets that same seat
+ * back — which is what makes a reload safe — and a full table is refused as full, so a phone
+ * arriving late is told the table is full rather than quietly given nothing.
+ *
+ * AFTER JOINING, the state is re-read from the public route rather than taken from the join
+ * answer: the join answer is about this caller's seat, and the waiting screen is about the
+ * whole table. Re-reading also means the countdown a phone shows is derived from the same
+ * field the venue display reads, whichever of the two arrived second.
+ */
+export async function joinLobby(fetchImpl, base, token, code, options = {}) {
+  const trimmed = typeof code === 'string' ? code.trim() : '';
+  if (trimmed === '') return { outcome: OUTCOMES.CODE_UNKNOWN, lobby: null, seatNo: null, error: 'this link carries no table code' };
+  const path = '/lobby/' + encodeURIComponent(trimmed) + '/join';
+  const body = options.displayName ? { displayName: options.displayName } : {};
+  const joined = await call(fetchImpl, base, path, { method: 'POST', body, token });
+  if (!joined.ok) {
+    if (joined.status === 401) return { outcome: OUTCOMES.NO_ACCOUNT, lobby: null, seatNo: null, error: joined.error };
+    if (joined.status === 404) {
+      return { outcome: OUTCOMES.CODE_UNKNOWN, lobby: null, seatNo: null, error: joined.error || 'that table code is not there' };
+    }
+    if (joined.status === 409) {
+      // Full, already started, or past its deadline — the service says which, and its own
+      // sentence is what a guest needs. All three mean "no seat for you here", none means
+      // "the service is broken", and none means "play offline".
+      return { outcome: OUTCOMES.SEAT_REFUSED, lobby: null, seatNo: null, error: joined.error || 'this table would not take a seat' };
+    }
+    if (joined.status === null) return { outcome: OUTCOMES.UNREACHABLE, lobby: null, seatNo: null, error: joined.error };
+    return {
+      outcome: OUTCOMES.SERVICE_FAULT, lobby: null, seatNo: null,
+      error: `the service answered HTTP ${joined.status}` + (joined.error ? ' (' + joined.error + ')' : '')
+        + ' — that is a fault at the service, not a refusal of this seat',
+    };
+  }
+
+  const seatNo = joined.body && Number.isInteger(joined.body.seatNo) ? joined.body.seatNo : null;
+  const again = await resolveLobby(fetchImpl, base, trimmed);
+  return { outcome: again.outcome, lobby: again.lobby, seatNo, error: again.error };
+}
+
+/**
+ * What a started table would have to publish before this client can play it.
+ *
+ * READ FROM THE SERVICE'S OWN ANSWER, and deliberately strict: a numeric game id AND the
+ * seat list that game id is played with. Anything less is not a table this client can address
+ * on the path that advances machine seats, and a half-answer is refused rather than guessed —
+ * the alternative is opening a `/deckmaster` table with a seat list this client invented,
+ * which is exactly the defect the old `playerId = 1` and `machine = 2` constants were.
+ *
+ * Returns null when the answer carries no such descriptor. `PLAY_DESCRIPTOR_GAP` above says
+ * what is missing and why.
+ */
+export function playDescriptor(body) {
+  if (!body || typeof body !== 'object') return null;
+  const tableId = Number.isInteger(body.engineGameId) && body.engineGameId > 0 ? body.engineGameId : null;
+  const seats = Array.isArray(body.playerIds) && body.playerIds.length
+    && body.playerIds.every((n) => Number.isInteger(n) && n > 0) ? body.playerIds.slice() : null;
+  const machineId = Number.isInteger(body.machineAccountId) && body.machineAccountId > 0 ? body.machineAccountId : null;
+  if (tableId === null || seats === null || machineId === null) return null;
+  if (!seats.includes(machineId)) return null;
+  return { tableId, seats, machineId, sessionId: typeof body.sessionId === 'string' ? body.sessionId : null };
+}
+
+/**
+ * The whole shared-table journey: resolve the code publicly, sign in, and take a seat.
+ *
+ * The order is the point. The code is resolved BEFORE sign-in because the service allows it
+ * and because a code that names no table should cost a guest nothing — no account, no seat,
+ * no request that could be mistaken for consent. Only once the table is known to exist, and
+ * to be for a game and rules version this client serves, is an account created.
+ *
+ * A table that has already started is reported as `TABLE_STARTED_UNPLAYABLE` together with a
+ * resolved descriptor if the service ever publishes one, so the moment that gap closes the
+ * play path is a small, tested change here rather than a rewrite in the page.
+ */
+export async function joinSharedTable(fetchImpl, base, store, code, game = SERVED.kadi, options = {}) {
+  const resolved = await resolveLobby(fetchImpl, base, code);
+  if (resolved.outcome !== OUTCOMES.TABLE_WAITING) {
+    return { ...resolved, session: null, accountId: null, seatNo: null, play: null };
+  }
+
+  /*
+   * THE ACCOUNT IS MADE AFTER THE TABLE IS KNOWN TO EXIST, and BEFORE the state is acted on.
+   * The order is the point twice over:
+   *
+   *   - before sign-in: a code that names no table costs a guest nothing, which is why the
+   *     resolve is public in the first place;
+   *   - after the resolve, and NOT after the state check: a table that has already started is
+   *     still a table this phone is entitled to play, and a client that returned the started
+   *     outcome without signing in had no session to play it with. Measured, not reasoned
+   *     about — the first build of this did exactly that and the started-table case failed
+   *     with "Cannot read properties of null (reading 'token')" in real Chrome.
+   */
+  const session = await signIn(fetchImpl, base, store, options);
+  if (!session.ok) {
+    return { outcome: OUTCOMES.NO_ACCOUNT, lobby: resolved.lobby, session: null, accountId: null, seatNo: null, play: null, error: session.error };
+  }
+
+  let accountId = Number(store.get('accountId'));
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    const found = await discoverAccountId(fetchImpl, base, session.token, session.username);
+    if (!found.ok) {
+      return { outcome: OUTCOMES.ID_UNKNOWN, lobby: resolved.lobby, session, accountId: null, seatNo: null, play: null, error: found.error };
+    }
+    accountId = found.id;
+    store.set('accountId', String(accountId));
+  }
+
+  if (hasStarted(resolved.lobby)) {
+    return {
+      outcome: OUTCOMES.TABLE_STARTED_UNPLAYABLE,
+      lobby: resolved.lobby,
+      session,
+      accountId,
+      seatNo: null,
+      play: playDescriptor(resolved.lobby),
+      error: PLAY_DESCRIPTOR_GAP,
+    };
+  }
+
+  const seat = await joinLobby(fetchImpl, base, session.token, code, options);
+  if (seat.outcome !== OUTCOMES.TABLE_WAITING) {
+    return { ...seat, session, accountId, play: seat.play || null };
+  }
+  if (hasStarted(seat.lobby)) {
+    return {
+      outcome: OUTCOMES.TABLE_STARTED_UNPLAYABLE, lobby: seat.lobby, session, accountId, seatNo: seat.seatNo,
+      play: playDescriptor(seat.lobby), error: PLAY_DESCRIPTOR_GAP,
+    };
+  }
+  return { ...seat, session, accountId, play: null };
 }

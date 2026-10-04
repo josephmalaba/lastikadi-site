@@ -6,11 +6,18 @@
  *
  *   https://lastikadi.com/play/?game=kadi&v=0.0.3
  *
+ * and, once the display opens the table a room is to share, the code that NAMES that table:
+ *
+ *   https://lastikadi.com/play/?game=kadi&v=0.0.3&code=9KP6ARTDQT
+ *
  * The wall was fixed to carry that identity (LAS-376 step 2). This module is the other
  * half: the phone reading it. Until this existed the client hard-coded a numeric game id
  * and never looked at its own address, so a scan carried the identity and nothing on the
  * phone consumed it — the screen said "Kadi, rules v0.0.3" and the phone silently played
- * whatever it had always played.
+ * whatever it had always played. `code` is the same acceptance one level down: a scan that
+ * names a TABLE is read here and handed to ./waiting.mjs, which is where the waiting and the
+ * single countdown live. Whether a code is a table this client can wait on is not decided
+ * here; `GET /lobby/{code}` is the only thing that can answer that.
  *
  * THE ONE RULE THIS FILE EXISTS TO KEEP: a link that does not name a game and version
  * this client can actually serve opens nothing. It is refused, with the game NAMED and
@@ -178,7 +185,20 @@ export function servedNames(served = SERVED) {
 }
 
 /**
- * Read `game` and `v` out of a location search string, without judging them.
+ * The keys a scan may carry, in one list, so the reader below and the resolver in
+ * ./waiting.mjs cannot disagree about what a link is allowed to name.
+ *
+ *   game   which game the display selected
+ *   v      which rules version it selected
+ *   code   WHICH TABLE it opened, when it opened one — the join code the service minted,
+ *          resolved publicly by `GET /lobby/{code}` before any account exists. A scan that
+ *          carries it names a table to wait for rather than a game to open privately, which
+ *          is the difference between the Founder's flow and the one that shipped.
+ */
+export const LINK_KEYS = Object.freeze(['game', 'v', 'code']);
+
+/**
+ * Read the pairs a scan may carry out of a location search string, without judging them.
  *
  * Deliberately mirrors tv/portfolio.mjs's readSelectionFragment(): the same pairs, the
  * same "a value that is only whitespace is an absent value" rule, and a tolerant decode.
@@ -191,7 +211,8 @@ export function servedNames(served = SERVED) {
  * alone and never emits a trailing space. An id that arrives carrying one is therefore not
  * the id the display wrote, and quietly repairing it would be this client inventing an
  * identity rather than reading one. It is reported as unknown instead, which is the same
- * refusal as any other unrecognised game.
+ * refusal as any other unrecognised game. The same rule applies to a join code, where the
+ * stakes are higher: a repaired code would be this client asking for somebody else's table.
  */
 export function readLink(search) {
   const raw = typeof search === 'string' ? search.replace(/^\?/, '') : '';
@@ -209,11 +230,11 @@ export function readLink(search) {
         // honest reading of it is "nothing usable here" rather than a half-decoded id.
         continue;
       }
-      if (key === 'game' || key === 'v') found[key] = value;
+      if (LINK_KEYS.includes(key)) found[key] = value;
     }
   }
   const usable = (value) => (typeof value === 'string' && value.trim() !== '' ? value : null);
-  return { game: usable(found.game), version: usable(found.v) };
+  return { game: usable(found.game), version: usable(found.v), code: usable(found.code) };
 }
 
 /* ---------------------------------------------------------------- the decision */
@@ -229,6 +250,11 @@ function refuse(state, asked, extra) {
     // on the page may deal a game while this is false.
     ok: false,
     game: asked.game,
+    // A refusal reports the table the link named, if it named one, and NEVER a table to
+    // join: the page decides what to wait for from `ok`, and a refusal must not be able to
+    // become a waiting screen for a table this client could not even serve.
+    code: null,
+    askedCode: asked.code || null,
     label: asked.game ? gameLabel(asked.game) : null,
     ruleVersion: asked.version,
     servedLabel: null,
@@ -308,6 +334,11 @@ export function planForLink(search, served = SERVED) {
     warn: text.warn,
     ok: true,
     game: asked.game,
+    // The TABLE this scan named, when it named one. Null means the link names only a game,
+    // and the page then has no shared table to wait for — it says so rather than waiting
+    // for a countdown against nothing.
+    code: asked.code || null,
+    askedCode: asked.code || null,
     label,
     ruleVersion: asked.version,
     servedLabel: label,
@@ -316,7 +347,7 @@ export function planForLink(search, served = SERVED) {
     title: label,
     note: label + ' — rules v' + asked.version + ', which is the version this link named and the '
       + 'version this client serves.',
-    detail: label + ' · rules v' + asked.version,
+    detail: label + ' · rules v' + asked.version + (asked.code ? ' · table ' + asked.code : ''),
   };
 }
 
