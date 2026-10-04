@@ -1,0 +1,280 @@
+﻿<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#18261D">
+<title>LastiKadi â€” Play Kadi</title>
+<link rel="manifest" href="./site.0e8d4a4e.webmanifest">
+<link rel="icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<link rel="apple-touch-icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<style>
+:root{--bg:#18261D;--panel:#1F332A;--panel2:#263D31;--gold:#D9A93C;--gold-hi:#F0C766;
+--cream:#F2E9D6;--dim:#9FB3A6;--line:#3A5346;--danger:#C4553F;--ok:#5AA469}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--cream);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;min-height:100dvh}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-size:17px;margin:0;letter-spacing:.3px}
+header .brand{color:var(--gold);font-weight:700}
+header .spacer{flex:1}
+.pill{border:1px solid var(--line);background:var(--panel2);color:var(--cream);border-radius:999px;
+padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+.pill:hover{border-color:var(--gold)}
+.pill[disabled]{opacity:.45;cursor:not-allowed}
+.mode{font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+main{flex:1;display:flex;flex-direction:column;gap:12px;padding:12px;max-width:1100px;margin:0 auto;width:100%}
+.table{flex:1;min-height:220px;border:1px solid var(--line);border-radius:14px;
+background:radial-gradient(120% 90% at 50% 0%,#24402F 0%,#1B2C22 55%,#16241C 100%);
+position:relative;display:flex;align-items:center;justify-content:center;padding:16px}
+.tablecenter{display:flex;flex-direction:column;align-items:center;gap:14px}
+.status{font-size:14px;color:var(--dim);text-align:center;min-height:20px}
+.status.alert{color:var(--gold-hi)}
+.status.bad{color:var(--danger)}
+.directive{font-size:13px;color:var(--gold);text-align:center;min-height:18px}
+.opp{position:absolute;top:10px;left:14px;font-size:13px;color:var(--dim)}
+.deck{position:absolute;top:10px;right:14px;font-size:13px;color:var(--dim)}
+.hand{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:flex-end;min-height:132px}
+.card{width:74px;height:108px;border-radius:9px;background:var(--cream);color:#1B2C22;border:2px solid #00000022;
+box-shadow:0 3px 10px #0006;position:relative;display:flex;flex-direction:column;justify-content:space-between;
+padding:6px 7px;cursor:pointer;transition:transform .09s ease;user-select:none}
+.card:hover{transform:translateY(-6px)}
+.card.playable{outline:2px solid var(--gold);outline-offset:2px}
+.card.wild{outline:2px dashed var(--gold-hi);outline-offset:2px}
+.card.dim{opacity:.42;cursor:not-allowed}
+.card.dim:hover{transform:none}
+.card .rank{font-size:20px;font-weight:700;line-height:1}
+.card .family{font-size:11px;font-weight:600}
+.card .glyph{font-size:26px;align-self:center}
+.card .name{font-size:9px;color:#1B2C2255;text-align:center}
+.card.red{color:#A8322A}.card.black{color:#1B2C22}
+.card.joker{background:linear-gradient(135deg,#F2E9D6 0%,#E4D3AE 100%)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding-bottom:4px;align-items:center}
+button.act{background:var(--gold);color:#20170A;border:0;border-radius:10px;padding:11px 18px;font-size:15px;
+font-weight:650;cursor:pointer;font-family:inherit}
+button.act:hover{background:var(--gold-hi)}
+button.act[disabled]{opacity:.4;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--cream);border:1px solid var(--line)}
+button.ghost:hover{border-color:var(--gold)}
+.families{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.winner{font-size:22px;color:var(--gold);text-align:center}
+.a11y{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border-top:1px solid var(--line)}
+@media (max-width:420px){.card{width:58px;height:88px}.card .rank{font-size:16px}.card .glyph{font-size:20px}}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">LastiKadi</span>
+  <h1 id="surface">Practice</h1>
+  <span class="mode" id="mode">offline</span>
+  <span class="spacer"></span>
+  <button class="pill" id="btn-new">New deal</button>
+  <button class="pill" id="btn-network" title="Play through the game server when it is reachable">Network</button>
+</header>
+
+<main>
+  <section class="table" aria-label="Table">
+    <div class="opp" id="opp">Machine â€” 6 cards</div>
+    <div class="deck" id="deck">Deck â€” 41</div>
+    <div class="tablecenter">
+      <div class="status" id="status" role="status" aria-live="polite">Startingâ€¦</div>
+      <div class="directive" id="directive"></div>
+      <div id="pile" aria-label="Top card"></div>
+    </div>
+  </section>
+  <div class="controls" id="controls"></div>
+  <div class="hand" id="hand" aria-label="Your hand"></div>
+</main>
+
+<footer>
+  Free to play. No prizes. No wagering. Rules by the canonical Kadi engine â€”
+  the same engine the Android app uses.
+</footer>
+<div class="a11y" id="live" aria-live="polite"></div>
+
+<script src="./kadi-runtime-browser.8e8a5365.js"></script>
+<script type="module">
+import { GameHost, LocalAuthority, NetworkAuthority } from './host.dbf3483b.mjs';
+
+const LUGUTU_BASE = 'https://api.lastikadi.com';
+const HUMAN = 1, MACHINE = 2, GAME_ID = 7;
+
+const SUITS = {
+  Heart: { glyph: '\u2665', red: true }, Kisu: { glyph: '\u2666', red: true },
+  Mavi: { glyph: '\u2663', red: false }, Spade: { glyph: '\u2660', red: false },
+  Joker: { glyph: '\u2605', red: false },
+};
+const SPECIALS = {
+  '2': 'adds 2 to the penalty', '7': 'blocks the next player', '8': 'turns the table',
+  'J': 'goes anywhere, names what follows', Joker: 'wipes the penalty, adds 5 â€” only a Joker answers it',
+};
+const $ = (id) => document.getElementById(id);
+const Ctor = (typeof KadiRuntime !== 'undefined' && KadiRuntime.KadiRuntimeJs) || null;
+
+let host = null, authority = null, view = null, busy = false;
+
+function newLocal() {
+  authority = new LocalAuthority(Ctor, { entropy: String(Date.now()), human: HUMAN, machine: MACHINE });
+  host = new GameHost(authority, { localSeat: HUMAN });
+  $('surface').textContent = 'Practice';
+  $('mode').textContent = 'offline';
+  return host.start();
+}
+
+function newNetwork() {
+  authority = new NetworkAuthority(LUGUTU_BASE, { seat: HUMAN, gameId: GAME_ID, playerCount: 2, machinePlayerIds: [MACHINE] });
+  host = new GameHost(authority, { localSeat: HUMAN });
+  $('surface').textContent = 'Network';
+  $('mode').textContent = 'the game server';
+  return host.start();
+}
+
+async function refresh(note, alert) {
+  view = await host.view();
+  render(note, alert);
+}
+
+async function act(action, args) {
+  if (busy) return;
+  busy = true;
+  const r = await host.act(action, args);
+  busy = false;
+  if (!r.ok) { await refresh(r.error || 'That move was refused.', true); return; }
+  await refresh();
+}
+
+function cardEl(card, state) {
+  const suit = SUITS[card.family] || SUITS.Spade;
+  const d = document.createElement('div');
+  const playable = state === 'playable', wild = state === 'wild';
+  d.className = 'card ' + (suit.red ? 'red' : 'black') + (card.symbol === 'Joker' ? ' joker' : '') +
+    (playable ? ' playable' : wild ? ' wild' : ' dim');
+  const special = SPECIALS[card.symbol];
+  d.setAttribute('role', 'button');
+  d.setAttribute('tabindex', (playable || wild) ? '0' : '-1');
+  d.setAttribute('aria-label', card.cardName.replace(/_/g, ' ') + (special ? ' â€” ' + special : '') +
+    (wild ? ' (needs a family named)' : ''));
+  d.innerHTML = '<div class="rank">' + card.symbol + '</div><div class="glyph">' + suit.glyph +
+    '</div><div class="family">' + card.family + '</div><div class="name">' +
+    card.cardName.replace(/_/g, ' ') + '</div>';
+  if (playable) d.addEventListener('click', () => act('play', { cardName: card.cardName }));
+  if (wild) d.addEventListener('click', () => showFamilyPicker(card.cardName));
+  d.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (playable) act('play', { cardName: card.cardName });
+    if (wild) showFamilyPicker(card.cardName);
+  });
+  return d;
+}
+
+function showFamilyPicker(cardName) {
+  const ctl = $('controls'); ctl.innerHTML = '';
+  const label = document.createElement('div');
+  label.className = 'winner'; label.style.fontSize = '15px';
+  label.textContent = 'Name a family for your ' + (cardName.includes('Joker') ? 'Joker' : 'Jack');
+  ctl.appendChild(label);
+  const row = document.createElement('div'); row.className = 'families';
+  for (const f of LocalAuthority.JACK_CALLS) {
+    const b = document.createElement('button');
+    b.className = 'act'; b.textContent = f;
+    b.addEventListener('click', () => act('play', { cardName, requestedFamily: f }));
+    row.appendChild(b);
+  }
+  ctl.appendChild(row);
+  const cancel = document.createElement('button');
+  cancel.className = 'act ghost'; cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', () => render());
+  ctl.appendChild(cancel);
+}
+
+function render(note, bad) {
+  const v = view;
+  $('opp').textContent = 'Machine â€” ' + (v.counts ? (v.counts[String(MACHINE)] ?? '?') : '?') + ' cards';
+  $('deck').textContent = 'Deck â€” ' + (v.drawCount ?? '?');
+
+  const st = $('status');
+  if (v.over) { st.className = 'status'; st.textContent = ''; }
+  else if (bad && note) { st.className = 'status bad'; st.textContent = note; }
+  else if (note) { st.className = 'status alert'; st.textContent = note; }
+  else if (v.mustAnnounce) { st.className = 'status alert'; st.textContent = 'One card left â€” announce it before you play.'; }
+  else if (v.choosingFamily) { st.className = 'status alert'; st.textContent = 'Your Jack names what comes next.'; }
+  else if (v.blocked) { st.className = 'status alert'; st.textContent = 'Blocked. Answer with the same card or pass.'; }
+  else if (v.penalty > 0) { st.className = 'status alert'; st.textContent = 'You owe a penalty of ' + v.penalty + '. Draw, or add to it.'; }
+  else if (v.turnHasPlayed) { st.className = 'status'; st.textContent = 'You have played. Play another of the same value, or finish your turn.'; }
+  else if (v.isTurn) { st.className = 'status'; st.textContent = 'Your turn.'; }
+  else { st.className = 'status'; st.textContent = 'Waiting for the machineâ€¦'; }
+
+  const dir = [];
+  if (v.requestedFamily && v.requestedFamily !== 'CHOICE') dir.push('Requested: ' + v.requestedFamily);
+  if (v.direction === -1) dir.push('Direction reversed');
+  $('directive').textContent = dir.join('  Â·  ');
+
+  const pile = $('pile'); pile.innerHTML = '';
+  if (v.topCard) pile.appendChild(cardEl(v.topCard, 'top'));
+
+  const hand = $('hand'); hand.innerHTML = '';
+  const playableSet = new Set(v.legalCards || []);
+  const wildSet = new Set(v.wildCards || []);
+  for (const name of v.hand) {
+    const parts = name.startsWith('Joker') ? { family: 'Joker', symbol: 'Joker' }
+      : { family: name.split('_')[0], symbol: name.split('_')[1] };
+    const state = v.over ? 'top' : playableSet.has(name) ? 'playable' : wildSet.has(name) ? 'wild' : 'dim';
+    hand.appendChild(cardEl({ cardName: name, family: parts.family, symbol: parts.symbol }, state));
+  }
+
+  const ctl = $('controls'); ctl.innerHTML = '';
+  const btn = (label, fn, ghost, enabled = true) => {
+    const b = document.createElement('button');
+    b.className = 'act' + (ghost ? ' ghost' : '');
+    b.textContent = label; b.disabled = !enabled;
+    if (enabled && fn) b.addEventListener('click', fn);
+    ctl.appendChild(b);
+    return b;
+  };
+
+  if (v.over) {
+    const msg = document.createElement('div');
+    msg.className = 'winner';
+    msg.textContent = v.winnerId === HUMAN ? 'You win â€” Kadi moja!' : 'The machine won this hand.';
+    ctl.appendChild(msg);
+    btn('Deal again', () => { busy = true; newLocal().then(() => refresh()).then(() => { busy = false; }); });
+    return;
+  }
+  if (!v.isTurn) { btn('Machine is thinkingâ€¦', null, true, false); return; }
+  if (v.mustAnnounce) { btn('Announce last card', () => act('announceLastCard')); return; }
+  if (v.choosingFamily) { showFamilyPicker(''); return; }
+  if (v.canFinish) btn('Finish turn', () => act('finish'), !v.legalCards.length);
+  if (v.canDraw) btn('Draw a card', () => act('draw'), v.legalCards.length > 0 || v.wildCards.length > 0);
+  if (v.canPass) btn('Pass', () => act('pass'));
+}
+
+$('btn-new').addEventListener('click', async () => { busy = true; await newLocal(); await refresh(); busy = false; });
+$('btn-network').addEventListener('click', async () => {
+  busy = true;
+  $('status').textContent = 'Contacting the serverâ€¦';
+  try {
+    await newNetwork();
+    await refresh('Network game â€” the server is authoritative.');
+  } catch (e) {
+    await newLocal();
+    await refresh('The game server is not reachable, so this is offline practice. (' + (e && e.message) + ')', true);
+  }
+  busy = false;
+});
+
+try {
+  if (!Ctor) throw new Error('the canonical Kadi runtime did not load');
+  await newLocal();
+  await refresh();
+} catch (e) {
+  $('status').textContent = 'The rules engine failed to load: ' + (e && e.message);
+  $('status').className = 'status bad';
+}
+</script>
+</body>
+</html>

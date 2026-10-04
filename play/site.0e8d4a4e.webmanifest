@@ -1,0 +1,20 @@
+{
+  "name": "LastiKadi — Kadi",
+  "short_name": "LastiKadi",
+  "description": "Play Kadi against the machine. Free, no prizes, no wagering. The same rules engine the Android app uses.",
+  "id": "/play/",
+  "start_url": "/play/",
+  "scope": "/play/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#18261D",
+  "theme_color": "#18261D",
+  "lang": "sw",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "/assets/brand/lastikadi-logo-96.png",  "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/lastikadi-logo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/lastikadi-logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/lastikadi-logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

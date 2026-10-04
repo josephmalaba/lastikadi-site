@@ -69,7 +69,15 @@
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
+/play/*
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
 /site.f2e64232.webmanifest
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
+/tv/*
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 

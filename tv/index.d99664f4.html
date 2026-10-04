@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F1A14">
+<title>LastiKadi — Table</title>
+<link rel="manifest" href="./site.90c412ee.webmanifest">
+<link rel="icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<link rel="apple-touch-icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<style>
+:root{
+  --bg:#0F1A14; --panel:#16261D; --gold:#D9A93C; --gold-hi:#F0C766;
+  --cream:#F2E9D6; --dim:#7E9488; --line:#2A4033;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--cream);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  overflow:hidden;-webkit-font-smoothing:antialiased}
+/* Everything here is sized for a 10-foot viewing distance: a TV across a room,
+   not a phone in a hand. The whole layout scales from one root value so a
+   Hisense panel at 1080p and a laptop at 720p both read correctly. */
+html{font-size:clamp(14px,1.55vw,30px)}
+.stage{height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:2.2rem 2.6rem;gap:1.4rem}
+header{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
+.brand{font-size:2.4rem;font-weight:700;color:var(--gold);letter-spacing:.02em}
+.tag{font-size:1.15rem;color:var(--dim)}
+.spacer{flex:1}
+.status{font-size:1.05rem;color:var(--dim)}
+.status b{color:var(--cream);font-weight:600}
+.status.on{color:var(--gold-hi)}
+main{display:grid;grid-template-columns:auto 1fr;gap:3rem;align-items:center;min-height:0;overflow:hidden}
+.joinbox{display:flex;flex-direction:column;align-items:center;gap:1.1rem;min-height:0}
+.qr{background:#F2E9D6;padding:1.1rem;border-radius:1rem;line-height:0;box-shadow:0 1rem 3rem #0008}
+/* Size the symbol against the viewport, not just its own height, or the URL
+   under it gets pushed into the footer on a 16:9 panel. */
+.qr canvas{display:block;width:min(42vh,40vw,22rem);height:auto;image-rendering:pixelated}
+.joinlabel{font-size:1.5rem;color:var(--gold-hi);font-weight:650;text-align:center}
+.joinurl{font-size:1.1rem;color:var(--dim);text-align:center;word-break:break-all;
+  max-width:22rem;line-height:1.35}
+.board{display:flex;flex-direction:column;gap:1.1rem;min-width:0}
+.board h1{margin:0;font-size:2.1rem;font-weight:650}
+.board p{margin:0;font-size:1.15rem;color:var(--dim);max-width:46ch;line-height:1.5}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.9rem;margin-top:.4rem}
+.slot{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:1rem 1.1rem;
+  display:flex;flex-direction:column;gap:.35rem}
+.slot .k{font-size:.85rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
+.slot .v{font-size:1.35rem;font-weight:600}
+.slot.wait .v{color:var(--gold)}
+.slot.off .v{color:var(--dim)}
+footer{display:flex;align-items:center;gap:1.4rem;font-size:1rem;color:var(--dim);flex-wrap:wrap;
+  border-top:1px solid var(--line);padding-top:1.1rem}
+footer .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--dim);display:inline-block;margin-right:.45rem}
+footer .dot.up{background:#5AA469}
+footer .dot.down{background:#8C5A4A}
+@media (max-aspect-ratio:1/1){ main{grid-template-columns:1fr;gap:1.6rem} .qr canvas{width:min(34vh,20rem)} }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header>
+    <span class="brand">LastiKadi</span>
+    <span class="tag" id="venueTag">Kadi at the table</span>
+    <span class="spacer"></span>
+    <span class="status" id="clock"></span>
+  </header>
+
+  <main>
+    <div class="joinbox">
+      <div class="qr"><canvas id="qr" width="1" height="1" role="img" aria-label="Scan to join a Kadi table"></canvas></div>
+      <div class="joinlabel">Scan to play</div>
+      <div class="joinurl" id="joinUrl"></div>
+    </div>
+
+    <div class="board">
+      <h1 id="headline">Start a table</h1>
+      <p id="blurb">
+        Scan the code with a phone to open Kadi. Free to play, no prizes, no wagering,
+        no account. Play against the machine or pass the phone around the table.
+      </p>
+      <div class="slots" id="slots"></div>
+    </div>
+  </main>
+
+  <footer>
+    <span><span class="dot" id="serverDot"></span><span id="serverText">Checking the table service…</span></span>
+    <span class="spacer"></span>
+    <span id="build"></span>
+  </footer>
+</div>
+
+<script type="module">
+import { matrix } from './qr.28204555.mjs';
+
+const JOIN_URL = 'https://lastikadi.com/play/';
+const TABLE_SERVICE = 'https://api.lastikadi.com';
+
+const $ = (id) => document.getElementById(id);
+
+/* ---- QR: drawn as a canvas so it stays crisp at any panel size ---- */
+function drawQr(canvas, text) {
+  const m = matrix(text);
+  const n = m.length;
+  const quiet = 4;
+  const scale = Math.max(2, Math.floor(1024 / (n + quiet * 2)));
+  const side = (n + quiet * 2) * scale;
+  canvas.width = side;
+  canvas.height = side;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#F2E9D6';
+  ctx.fillRect(0, 0, side, side);
+  ctx.fillStyle = '#0F1A14';
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (m[r][c]) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+    }
+  }
+}
+
+/* ---- clock: a venue display should look alive ---- */
+function tick() {
+  const now = new Date();
+  $('clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+/* ---- the table service ---- */
+function slot(label, value, state) {
+  const d = document.createElement('div');
+  d.className = 'slot' + (state ? ' ' + state : '');
+  const k = document.createElement('span'); k.className = 'k'; k.textContent = label;
+  const v = document.createElement('span'); v.className = 'v'; v.textContent = value;
+  d.appendChild(k); d.appendChild(v);
+  return d;
+}
+
+function renderSlots(entries) {
+  const s = $('slots');
+  s.innerHTML = '';
+  for (const e of entries) s.appendChild(slot(e.label, e.value, e.state));
+}
+
+async function checkService() {
+  const dot = $('serverDot');
+  const txt = $('serverText');
+  let up = false;
+  try {
+    const r = await fetch(TABLE_SERVICE + '/admin/dashboard', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    up = r.ok;
+  } catch { up = false; }
+
+  dot.className = 'dot ' + (up ? 'up' : 'down');
+  if (up) {
+    txt.textContent = 'Table service online';
+    $('headline').textContent = 'Tables at this venue';
+    renderSlots([
+      { label: 'Service', value: 'Online', state: 'wait' },
+      { label: 'Open tables', value: '—' },
+      { label: 'Players', value: '—' },
+    ]);
+  } else {
+    // Be honest about what is and is not available: the game itself works with
+    // no service at all, which is the point of an offline-first table game.
+    txt.textContent = 'Table service not reachable — offline play only';
+    $('headline').textContent = 'Start a table';
+    renderSlots([
+      { label: 'Rules engine', value: 'Ready' },
+      { label: 'Play mode', value: 'Offline' },
+      { label: 'Service', value: 'Unavailable', state: 'off' },
+    ]);
+  }
+  return up;
+}
+
+drawQr($('qr'), JOIN_URL);
+$('joinUrl').textContent = JOIN_URL.replace(/^https?:\/\//, '');
+$('build').textContent = 'tv.lastikadi.com';
+tick();
+setInterval(tick, 20000);
+checkService();
+// Re-check politely: a venue screen left on all day should notice a service
+// coming up without hammering it.
+setInterval(checkService, 60000);
+</script>
+</body>
+</html>
