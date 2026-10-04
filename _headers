@@ -69,7 +69,19 @@
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
-/go/authority.96e5f630.mjs
+/bridge/authority.9aad437e.mjs
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
+/bridge/rules.35ca8d07.mjs
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
+/bridge/site.b5b4d67e.webmanifest
+  cache-control: public, max-age=31536000, immutable
+  x-content-type-options: nosniff
+
+/go/authority.9c4ae4dc.mjs
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
@@ -81,7 +93,7 @@
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
-/play/host.dbf3483b.mjs
+/play/host.0810b83e.mjs
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
@@ -97,7 +109,7 @@
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
-/shogi/authority.ca4a4d6e.mjs
+/shogi/authority.7f5f45f2.mjs
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
@@ -122,6 +134,9 @@
   x-content-type-options: nosniff
 
 /
+  cache-control: no-cache
+
+/bridge/index.html
   cache-control: no-cache
 
 /go/index.html

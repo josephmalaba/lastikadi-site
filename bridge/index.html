@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F1A14">
+<title>LastiKadi — Bridge</title>
+<link rel="manifest" href="./site.b5b4d67e.webmanifest">
+<link rel="icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<link rel="apple-touch-icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<style>
+:root{--bg:#0F1A14;--panel:#16261D;--line:#2A4033;--gold:#D9A93C;--gold-hi:#F0C766;
+  --cream:#F2E9D6;--dim:#7E9488;--red:#C6553F}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--cream);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;align-items:center;padding:18px 14px 40px}
+header{width:100%;max-width:820px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.brand{color:var(--gold);font-weight:700;font-size:20px}
+.tag{color:var(--dim);font-size:14px}
+.spacer{flex:1}
+.pill{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--dim)}
+main{width:100%;max-width:820px}
+.status{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:12px;
+  font-size:15px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.status b{color:var(--gold-hi)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.panel h2{margin:0 0 10px;font-size:15px;color:var(--dim);font-weight:600;letter-spacing:.02em;text-transform:uppercase}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--dim);font-weight:500}
+.hand{display:flex;flex-wrap:wrap;gap:8px}
+.card{border:1px solid var(--line);background:#0B1410;border-radius:8px;padding:8px 12px;font-weight:600;
+  cursor:default;min-width:52px;text-align:center}
+.card.red{color:var(--red)}
+.card.playable{border-color:var(--gold);cursor:pointer;background:#1A2A20}
+.card.playable:hover{background:#22392C}
+.trick{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin:6px 0 0}
+.trick .slot{min-width:64px;text-align:center;color:var(--dim);font-size:13px}
+.trick .slot b{display:block;font-size:15px;color:var(--cream)}
+.bids{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.bids button{font:inherit;border:1px solid var(--line);background:#0B1410;color:var(--cream);border-radius:7px;
+  padding:7px 0;cursor:pointer;font-size:14px}
+.bids button:disabled{opacity:.25;cursor:default}
+.bids button.lead{grid-column:span 5;background:var(--gold);color:#20180A;border-color:var(--gold);font-weight:700}
+.bids button.special{grid-column:span 1}
+.quiet{background:transparent;color:var(--cream);border:1px solid var(--line);border-radius:9px;padding:10px 16px;
+  font:inherit;cursor:pointer}
+.lim{color:#C9A66B}
+.note{color:var(--dim);font-size:14px;margin:10px 0 0}
+footer{margin-top:20px;color:var(--dim);font-size:13px;text-align:center;max-width:680px}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">LastiKadi</span>
+  <span class="tag">Bridge</span>
+  <span class="pill" id="surface">Practice</span>
+  <span class="spacer"></span>
+  <span class="pill" id="engine">engine —</span>
+</header>
+
+<main>
+  <div class="status">
+    <span id="status">Dealing…</span>
+    <span class="spacer"></span>
+    <span id="tally"></span>
+  </div>
+
+  <div class="panel" id="auctionPanel">
+    <h2>Auction</h2>
+    <table><tbody id="auctionHistory"><tr><td>—</td><td></td></tr></tbody></table>
+    <div class="bids" id="bids" style="margin-top:12px"></div>
+  </div>
+
+  <div class="panel" id="playPanel" hidden>
+    <h2>Table</h2>
+    <div class="trick" id="trick"></div>
+    <p class="note" id="tricks"></p>
+  </div>
+
+  <div class="panel">
+    <h2>Your hand <span id="handSeat" class="pill">South</span></h2>
+    <div class="hand" id="hand"></div>
+  </div>
+
+  <div style="display:flex;justify-content:center">
+    <button class="quiet" id="new">New deal</button>
+  </div>
+
+  <p class="note lim" id="limit"></p>
+  <p class="note" id="hint"></p>
+</main>
+
+<footer>Free to play. No prizes. No wagering. Rules by the LastiKadi Bridge rules module,
+vendored unchanged from the repository that owns them.</footer>
+
+<script type="module">
+import { GameHost } from '../play/host.0810b83e.mjs';
+import { BridgeAuthority } from './authority.9aad437e.mjs';
+import { SEATS, PASS, DOUBLE, REDOUBLE } from './rules.35ca8d07.mjs';
+
+const SUIT_GLYPH = { C: '♣', D: '♦', H: '♥', S: '♠', NT: 'NT' };
+const RED = new Set(['D', 'H']);
+const SEAT_NAME = { N: 'North', E: 'East', S: 'South', W: 'West' };
+
+const $ = (id) => document.getElementById(id);
+let host = null;
+let view = null;
+
+const cardLabel = (id) => {
+  const suit = id[0];
+  const rank = id.slice(1);
+  return { suit, rank, text: `${SUIT_GLYPH[suit] || suit} ${rank}`, red: RED.has(suit) };
+};
+const callLabel = (call) => {
+  if (call === PASS) return 'Pass';
+  if (call === DOUBLE) return 'X';
+  if (call === REDOUBLE) return 'XX';
+  return `${call.level}${SUIT_GLYPH[call.strain] || call.strain}`;
+};
+
+function render() {
+  if (!view) return;
+
+  // Status
+  if (view.over) {
+    const w = view.winnerId === 1 ? 'North–South win' : view.winnerId === 2 ? 'East–West win' : 'Tied';
+    $('status').innerHTML = `<b>Tricks complete.</b> ${w}.`;
+  } else if (view.phase === 'passed-out') {
+    $('status').innerHTML = '<b>Passed out.</b> Nobody bid, so this deal is redealt.';
+  } else if (view.turn === 'S') {
+    $('status').innerHTML = view.phase === 'auction'
+      ? '<b>Your turn.</b> Bid or pass.'
+      : '<b>Your turn.</b> Play a card.';
+  } else {
+    $('status').textContent = `${SEAT_NAME[view.turn] || view.turn} is ${
+      view.phase === 'auction' ? 'bidding' : 'playing'}…`;
+  }
+
+  $('tally').textContent = view.over ? ''
+    : view.contract
+      ? `contract ${callLabel(view.contract)} by ${view.contract.declarer}${
+        view.doubled === 1 ? ' doubled' : view.doubled === 2 ? ' redoubled' : ''} · NS ${view.trickCounts.NS} / EW ${view.trickCounts.EW}`
+      : `dealer ${view.dealer}`;
+
+  // Auction history
+  $('auctionHistory').innerHTML = view.auction.length
+    ? view.auction.map((c) => `<tr><td>${SEAT_NAME[c.seat] || c.seat}</td><td>${callLabel(c.call)}</td></tr>`).join('')
+    : '<tr><td>—</td><td>no calls yet</td></tr>';
+
+  // Bid grid: only calls the rules accept are enabled.
+  const legal = view.legalCalls;
+  const has = (c) => legal.some((x) => (typeof x === 'string' ? x === c : x.level === c.level && x.strain === c.strain));
+  const rows = [];
+  for (let level = 1; level <= 7; level++) {
+    for (const strain of ['C', 'D', 'H', 'S', 'NT']) {
+      const on = has({ level, strain });
+      rows.push(`<button ${on ? '' : 'disabled'} data-bid="${level}:${strain}">${level}${SUIT_GLYPH[strain]}</button>`);
+    }
+  }
+  rows.push(`<button class="special ${has(PASS) ? 'lead' : ''}" ${has(PASS) ? '' : 'disabled'} data-call="PASS">Pass</button>`);
+  rows.push(`<button class="special" ${has(DOUBLE) ? '' : 'disabled'} data-call="X">Double</button>`);
+  rows.push(`<button class="special" ${has(REDOUBLE) ? '' : 'disabled'} data-call="XX">Redouble</button>`);
+  $('bids').innerHTML = view.phase === 'auction' ? rows.join('') : '<p class="note">The auction is over.</p>';
+
+  // Play table
+  $('playPanel').hidden = view.phase === 'auction';
+  $('trick').innerHTML = SEATS.map((s) => {
+    const entry = (view.trick || []).find((t) => t.seat === s);
+    const c = entry ? cardLabel(entry.card.id) : null;
+    return `<div class="slot">${SEAT_NAME[s]}<b class="${c && c.red ? 'red' : ''}">${c ? c.text : '—'}</b></div>`;
+  }).join('');
+  $('tricks').textContent = view.phase === 'play' || view.over
+    ? `Tricks won — North–South ${view.trickCounts.NS}, East–West ${view.trickCounts.EW}` +
+      (view.trumps ? ` · trumps ${SUIT_GLYPH[view.trumps]}` : ' · no trumps')
+    : '';
+
+  // Hand
+  $('handSeat').textContent = SEAT_NAME[host.localSeat] || host.localSeat;
+  const playable = new Set(view.legalPlays);
+  $('hand').innerHTML = (view.hand || []).map((id) => {
+    const c = cardLabel(id);
+    const on = view.phase === 'play' && playable.has(id);
+    return `<div class="card ${c.red ? 'red' : ''} ${on ? 'playable' : ''}" data-card="${id}">${c.text}</div>`;
+  }).join('') || '<span class="note">No cards in this seat.</span>';
+
+  // Limits, stated rather than discovered.
+  $('limit').textContent = view.scoringImplemented
+    ? ''
+    : 'Scoring is not implemented: this client counts tricks and does not compute a bridge score, and it does not model vulnerability or dummy play.';
+
+  $('engine').textContent = `engine ${host.authority.ruleVersion}`;
+  $('hint').textContent = view.phase === 'auction'
+    ? 'You are South. The other three seats are played by a simple points-and-length opponent, not a bidding system.'
+    : 'Follow suit if you can — the rules decide which cards are playable.';
+}
+
+async function refresh() {
+  view = await host.view(host.localSeat);
+  render();
+}
+
+$('bids').addEventListener('click', async (event) => {
+  const b = event.target.closest('button');
+  if (!b || b.disabled) return;
+  let call;
+  if (b.dataset.call) call = b.dataset.call;
+  else if (b.dataset.bid) {
+    const [level, strain] = b.dataset.bid.split(':');
+    call = { level: Number(level), strain };
+  } else return;
+  const res = await host.act('call', { call });
+  if (!res.ok) $('hint').textContent = res.error;
+  await refresh();
+});
+
+$('hand').addEventListener('click', async (event) => {
+  const el = event.target.closest('.card.playable');
+  if (!el) return;
+  const res = await host.act('play', { card: el.dataset.card });
+  if (!res.ok) $('hint').textContent = res.error;
+  await refresh();
+});
+
+$('new').onclick = async () => {
+  host = new GameHost(new BridgeAuthority(), { localSeat: 'S' });
+  await host.start();
+  await refresh();
+};
+
+$('new').click();
+</script>
+</body>
+</html>

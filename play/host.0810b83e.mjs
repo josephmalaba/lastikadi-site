@@ -287,6 +287,21 @@ export class GameHost {
     const opened = await this.authority.open();
     this.state = opened;
     this.log.push({ event: 'open', ...opened });
+    /*
+     * Let agent seats move before returning, because the opening seat is not always
+     * the human's.
+     *
+     * `act` already settles agents after a human action, but `start` did not, so a
+     * game whose first turn belongs to a machine simply stopped there. Kadi, Go and
+     * Shogi all open on the human seat, so none of them revealed it; Bridge does,
+     * because the dealer is a machine and the auction starts with the dealer.
+     *
+     * Found by Bridge, fixed for every game here rather than worked around in the
+     * Bridge page, because the next title with a machine-first opening would hit the
+     * same wall. Where the human opens, machineReady() is already false and this is
+     * a no-op.
+     */
+    await this.settleAgents();
     return opened;
   }
 

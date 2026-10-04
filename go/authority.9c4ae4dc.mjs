@@ -14,7 +14,7 @@
  * Rules are not restated here. Every legality question goes to go/rules.mjs, which
  * is the only thing in this client that knows what Go is.
  */
-import { GameAuthority } from '../play/host.dbf3483b.mjs';
+import { GameAuthority } from '../play/host.0810b83e.mjs';
 import {
   BLACK, WHITE, EMPTY, createState, playMove, pass, resign,
   legalMoves, botMove, score, indexToPoint, pointToIndex,

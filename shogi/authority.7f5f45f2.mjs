@@ -16,7 +16,7 @@
  * is reported through the view rather than hidden, so the client can say so and
  * support can answer a report about drops as known-not-yet-built.
  */
-import { GameAuthority } from '../play/host.dbf3483b.mjs';
+import { GameAuthority } from '../play/host.0810b83e.mjs';
 import {
   SENTE, GOTE, other, createState, movesFrom, playMove, resign, botMove,
   inCheck, DROPS_SUPPORTED, descriptor,
