@@ -144,9 +144,17 @@ async function checkService() {
   const txt = $('serverText');
   let up = false;
   try {
-    const r = await fetch(TABLE_SERVICE + '/admin/dashboard', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
-    });
+    /*
+     * Probe a PUBLIC endpoint. This previously probed /admin/dashboard, which
+     * requires the ADMIN role, so an unsigned-in venue screen got 401 every time
+     * and reported "Table service not reachable" while the service was perfectly
+     * healthy — an unnecessary lie on a screen whose whole job is to say whether
+     * the table service is up.
+     *
+     * /v2/api-docs is served without authentication (permitAll in the service's
+     * security configuration), so its answer is a truthful liveness check.
+     */
+    const r = await fetch(TABLE_SERVICE + '/v2/api-docs', { method: 'GET' });
     up = r.ok;
   } catch { up = false; }
 
