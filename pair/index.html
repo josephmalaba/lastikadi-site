@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F1A14">
+<meta name="robots" content="noindex">
+<title>LastiKadi — Pair a screen</title>
+<!--
+  THE POLICY THIS PAGE IS ACTUALLY HELD TO.
+
+  It is a <meta> rather than a line in _headers on purpose, and the reason is measured: the
+  file _headers in the published tree is a Netlify/Cloudflare-Pages convention, and the host
+  that serves lastikadi.com ignores it. Measured live, https://lastikadi.com/ answers with no
+  Content-Security-Policy header at all (the only CSP seen anywhere on the host was the 404
+  page's own meta tag). A policy nobody applies is a claim, not a control. This one is
+  delivered with the document, so the browser enforces it.
+
+  Why each directive is here:
+    default-src 'none'                     nothing is allowed that is not named below
+    script-src 'self'                      no inline script, no eval, no third party. The
+                                           page's module is a same-origin file, which is why
+                                           it is a file and not an inline <script>.
+    style-src 'self' 'unsafe-inline'       the page's own <style> block
+    img-src 'self'                         no beacons, no pixels, no third-party images
+    connect-src https://api.lastikadi.com  THE ONE THAT MATTERS. The session this page holds
+                                           can be sent to exactly one origin, so even a bug
+                                           cannot post it somewhere else. No wildcard.
+    base-uri 'none'                        a <base> tag cannot be injected to repoint the
+                                           page's own module and form targets
+    form-action 'none'                     the sign-in form can never navigate, so a password
+                                           cannot leave through a form post
+
+  frame-ancestors is deliberately NOT here: the specification ignores it when it arrives in a
+  meta element, and a directive that is silently dropped is worse than one that is absent.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src https://api.lastikadi.com; base-uri 'none'; form-action 'none'">
+<style>
+:root{--bg:#0F1A14;--panel:#16261D;--line:#2A4033;--gold:#D9A93C;--gold-hi:#F0C766;
+  --cream:#F2E9D6;--dim:#7E9488;--warn:#C9A66B;--bad:#E0A98F}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--cream);
+  font:17px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;align-items:center;
+  padding:20px 16px 44px}
+header{width:100%;max-width:640px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.brand{color:var(--gold);font-weight:700;font-size:21px}
+.tag{color:var(--dim);font-size:15px}
+main{width:100%;max-width:640px}
+h1{margin:0 0 6px;font-size:22px;font-weight:650}
+p{margin:0 0 12px}
+.lede{color:var(--dim);font-size:16px}
+
+/* THE CODE, sized for a person holding a phone next to a television. This is the one thing on
+   the page that has to be legible while its reader is looking at another screen, so it is the
+   largest text here by a wide margin and it is monospaced so that characters cannot be
+   confused by their shapes. */
+.codecard{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:18px 16px;margin-bottom:16px;text-align:center}
+.codelabel{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:800;
+  font-size:clamp(34px,12vw,58px);letter-spacing:.06em;color:var(--gold-hi);line-height:1.15;
+  word-break:break-all}
+.code[hidden]{display:none}
+.codenote{color:var(--dim);font-size:14px;margin:8px 0 0}
+
+.message{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:13px 15px;margin-bottom:14px;font-size:17px}
+.message:empty{display:none}
+.detail{margin:8px 0 0;color:var(--dim);font-size:14px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+.detail[hidden]{display:none}
+.expiry{margin:8px 0 0;color:var(--warn);font-size:15px}
+.expiry[hidden]{display:none}
+
+section{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:14px 15px;margin-bottom:14px}
+section[hidden]{display:none}
+h2{margin:0 0 10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:650}
+label{display:block;font-size:14px;color:var(--dim);margin:10px 0 4px}
+input{width:100%;font:inherit;font-size:17px;color:var(--cream);background:#0B1410;
+  border:1px solid var(--line);border-radius:9px;padding:11px 12px}
+input:focus{outline:2px solid var(--gold);outline-offset:1px}
+input.code-input{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:26px;letter-spacing:.14em;text-transform:uppercase;text-align:center}
+button{font:inherit;font-weight:650;border:0;border-radius:10px;padding:13px 18px;cursor:pointer;
+  background:var(--gold);color:#20180A;width:100%;margin-top:12px}
+button:disabled{opacity:.45;cursor:default}
+button.quiet{background:transparent;color:var(--cream);border:1px solid var(--line);font-weight:500}
+button[hidden]{display:none}
+.sessionline{color:var(--cream);font-size:15px;margin:0 0 4px}
+.hint{color:var(--dim);font-size:14px;margin:10px 0 0}
+details{margin-top:8px}
+summary{cursor:pointer;color:var(--gold);font-size:15px}
+footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-width:640px}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">LastiKadi</span>
+  <span class="tag">Pair a screen</span>
+</header>
+
+<main>
+  <h1>Approve the screen</h1>
+  <p class="lede">
+    A screen asked to act on your behalf. Check that the code below is the code on the screen,
+    sign in, and approve it. The screen then keeps its own credential on that device — nothing
+    is shown here and nothing is put in this address.
+  </p>
+
+  <div class="codecard">
+    <div class="codelabel">Code on the screen</div>
+    <div class="code" id="code" role="status" aria-live="polite">— — — —</div>
+    <p class="codenote">Read this off the screen and check it matches before you approve.</p>
+  </div>
+
+  <div class="message" id="message" role="status" aria-live="polite"></div>
+  <p class="detail" id="detail" hidden></p>
+  <p class="expiry" id="expiry" hidden></p>
+
+  <!-- The typed-code path, shown only when the link carried no code. -->
+  <section id="codeForm" hidden>
+    <h2>Type the code</h2>
+    <form novalidate>
+      <label for="codeInput">Code shown on the screen</label>
+      <input id="codeInput" class="code-input" name="code" autocomplete="off"
+             autocapitalize="characters" spellcheck="false" inputmode="text"
+             maxlength="12" placeholder="ABCD-EFGH">
+      <button type="submit">Use this code</button>
+    </form>
+  </section>
+
+  <!-- The session step. A screen is paired to the account that approves it, so this is required
+       and there is no unauthenticated path past it. -->
+  <section id="signInPanel" hidden>
+    <h2>Sign in</h2>
+    <p class="sessionline" id="sessionLine">Not signed in</p>
+    <form id="signInForm" novalidate>
+      <label for="signInName">Sign-in name</label>
+      <input id="signInName" name="username" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <label for="signInPassword">Password</label>
+      <input id="signInPassword" name="password" type="password" autocomplete="current-password">
+      <button type="submit">Sign in</button>
+    </form>
+    <details>
+      <summary>I do not have an account</summary>
+      <form id="registerForm" novalidate>
+        <label for="registerName">Choose a sign-in name</label>
+        <input id="registerName" name="new-username" autocomplete="username" autocapitalize="none" spellcheck="false">
+        <label for="registerEmail">Email address</label>
+        <input id="registerEmail" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false">
+        <label for="registerPassword">Choose a password (at least 8 characters)</label>
+        <input id="registerPassword" name="new-password" type="password" autocomplete="new-password">
+        <button type="submit">Create the account and sign in</button>
+      </form>
+      <p class="hint">
+        The account you approve with is the account the screen acts as. Create one only if the
+        screen is yours to pair.
+      </p>
+    </details>
+  </section>
+
+  <button id="approve" hidden>Approve this screen</button>
+  <button id="signOut" class="quiet" hidden>Sign out</button>
+</main>
+
+<footer>
+  Free to play. No prizes. No wagering. This page stores no credential on this device.
+</footer>
+
+<noscript>
+  <p>This page needs JavaScript. It has nothing to show without it.</p>
+</noscript>
+
+<!--
+  A FILE, NOT AN INLINE SCRIPT, and that is a security decision rather than a style one:
+  `script-src 'self'` is only enforceable if there is no inline script to allow. It also means
+  this document holds no logic at all, so a stale copy of it can only be stale about a
+  filename — and the filename it names is written into it by the build that emitted it, because
+  the module is content-addressed and this file is not.
+-->
+<script type="module" src="./page.63932b06.mjs"></script>
+</body>
+</html>
