@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0F1A14">
 <title>LastiKadi — Table</title>
-<link rel="manifest" href="./site.90c412ee.webmanifest">
+<link rel="manifest" href="./site.webmanifest">
 <link rel="icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
 <link rel="apple-touch-icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
 <style>
@@ -19,256 +19,312 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--cream);
   overflow:hidden;-webkit-font-smoothing:antialiased}
 /* Everything here is sized for a 10-foot viewing distance: a TV across a room,
    not a phone in a hand. The whole layout scales from one root value so a
-   Hisense panel at 1080p and a laptop at 720p both read correctly.
-
-   IT HAS TO FIT, NOT SCROLL — and this took three attempts, the first two wrong in the same
-   direction. First the clamp reached 30px, the details column measured 708px tall inside a
-   698px row at 1920x1080, and `main{overflow:hidden}` CUT the excess off: the property tiles
-   sat 343px below the fold, over the footer, and the QR with them. Then `overflow:hidden` was
-   replaced with a scroll container, which is not a fix — the room read it and said "the
-   interface still scrolls". Fit is not scroll; a panel on a wall has nobody to scroll it.
-
-   So this is a SIZING fix, which is the knob the room explicitly offered ("you can change
-   size of font/menu/labels of properties"). The clamp tops out at 17px: enough for a 10-foot
-   read at 1080p, small enough that the heading, the sentence, the property tiles, the
-   countdown and the per-game details fit the row the stage gives them at every size a panel
-   is mounted at. `overflow` stays VISIBLE everywhere on purpose — no scrolling, no clipping,
-   and if a future edit ever makes the content too tall it overflows and is MEASURED, rather
-   than being quietly absorbed by a scrollbar or quietly cut off. tests/layout.test.mjs fails
-   on either, and it now asks EVERY element whether its content is taller than its box. */
-html{font-size:clamp(11px,0.92vw,17px)}
-.stage{height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:1.2rem 1.6rem;gap:.8rem}
+   Hisense panel at 1080p and a laptop at 720p both read correctly. */
+html{font-size:clamp(14px,1.55vw,30px)}
+.stage{height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:2.2rem 2.6rem;gap:1.4rem}
 header{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
-.brand{font-size:2.1rem;font-weight:700;color:var(--gold);letter-spacing:.02em}
+.brand{font-size:2.4rem;font-weight:700;color:var(--gold);letter-spacing:.02em}
 .tag{font-size:1.15rem;color:var(--dim)}
 .spacer{flex:1}
 .status{font-size:1.05rem;color:var(--dim)}
 .status b{color:var(--cream);font-weight:600}
 .status.on{color:var(--gold-hi)}
-/* QR left, details right — at EVERY size, which is what the room asked for.
-   `align-items:start` rather than `center`: centring a column taller than its row pushes
-   half the excess past the bottom edge, which is how the property tiles ended up behind the
-   footer. `min-height:0` on both children is what lets the grid row actually constrain them,
-   and `overflow:visible` is deliberate: no scrolling, no clipping, and any future overflow is
-   visible to the measurement instead of being absorbed by the box. */
-main{display:grid;grid-template-columns:auto 1fr;gap:1.2rem;align-items:start;min-height:0;overflow:visible}
-.joinbox{display:flex;flex-direction:column;align-items:center;gap:.7rem;min-height:0}
-.qr{background:#F2E9D6;padding:.8rem;border-radius:1rem;line-height:0;box-shadow:0 1rem 3rem #0008}
-/* Size the symbol against the VIEWPORT, not against the root type size. It used to be capped
-   in `rem`, so shrinking the type to make the details fit shrank the scan code with it — and
-   a scan code is the one thing on this screen that has to be big enough to read from across a
-   room. The details column takes what is left, which is exactly what `1fr` is for. */
-.qr canvas{display:block;width:min(38vh,26vw,30rem);height:auto;image-rendering:pixelated}
-/* THE COUNTDOWN, and the one trade it forces.
-   This is the thing the room has to read from across the room, so it is sized against the
-   viewport in the same way the scan code is, and it is never smaller than the body text.
-   When a table is being counted down the symbol is narrowed (rule below) so that both fit
-   the column without either being cut: a person walks up to a wall to scan a code, but a
-   room reads the clock from where it is sitting. When there is no countdown the symbol
-   takes the full size it had before. */
-.clock{display:flex;flex-direction:column;align-items:center;gap:.15rem;min-width:0;max-width:100%}
-/* `line-height:normal` rather than 1, and it is not cosmetic: this harness asks EVERY element
-   whether its content is taller than its box, and a line-height below the font's own line box
-   makes the browser report the glyph box as content past the edge — 102px of box holding a
-   119px line. Nothing was visibly cut, and it is still a FAILURE by the rule this page is
-   held to, so the box is grown to hold its own line. */
-.clock__big{font-size:min(7.5vw,12vh,6rem);line-height:normal;font-weight:800;color:var(--gold-hi);
-  font-variant-numeric:tabular-nums;letter-spacing:.01em}
-.clock__big[hidden]{display:none}
-.clock__word{font-size:1.08rem;font-weight:650;color:var(--cream);text-align:center}
-.clock__word.warn{color:#C9A66B}
-.clock__detail{font-size:.9rem;color:var(--dim);text-align:center;max-width:32ch;line-height:1.35}
-.joinlabel{font-size:1.35rem;color:var(--gold-hi);font-weight:650;text-align:center}
-.joinurl{font-size:.95rem;color:var(--dim);text-align:center;word-break:break-all;
-  max-width:20rem;line-height:1.3}
-.board{display:flex;flex-direction:column;gap:.6rem;min-width:0;min-height:0;overflow:visible}
-.board h1{margin:0;font-size:1.75rem;font-weight:650}
-.board p{margin:0;font-size:1.05rem;color:var(--dim);max-width:60ch;line-height:1.4}
-.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));gap:.55rem;margin-top:.1rem}
-.slot{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:.6rem .8rem;
-  display:flex;flex-direction:column;gap:.15rem}
-.slot .k{font-size:.78rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
-.slot .v{font-size:1.15rem;font-weight:600}
+main{display:grid;grid-template-columns:auto 1fr;gap:3rem;align-items:center;min-height:0;overflow:hidden}
+.joinbox{display:flex;flex-direction:column;align-items:center;gap:1.1rem;min-height:0}
+.qr{background:#F2E9D6;padding:1.1rem;border-radius:1rem;line-height:0;box-shadow:0 1rem 3rem #0008}
+/* Size the symbol against the viewport, not just its own height, or the URL
+   under it gets pushed into the footer on a 16:9 panel. */
+.qr canvas{display:block;width:min(42vh,40vw,22rem);height:auto;image-rendering:pixelated}
+.joinlabel{font-size:1.5rem;color:var(--gold-hi);font-weight:650;text-align:center}
+.joinurl{font-size:1.1rem;color:var(--dim);text-align:center;word-break:break-all;
+  max-width:22rem;line-height:1.35}
+.board{display:flex;flex-direction:column;gap:1.1rem;min-width:0}
+.board h1{margin:0;font-size:2.1rem;font-weight:650}
+.board p{margin:0;font-size:1.15rem;color:var(--dim);max-width:46ch;line-height:1.5}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.9rem;margin-top:.4rem}
+.slot{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:1rem 1.1rem;
+  display:flex;flex-direction:column;gap:.35rem}
+.slot .k{font-size:.85rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
+.slot .v{font-size:1.35rem;font-weight:600}
 .slot.wait .v{color:var(--gold)}
 .slot.off .v{color:var(--dim)}
-footer{display:flex;align-items:center;gap:1.2rem;font-size:.92rem;color:var(--dim);flex-wrap:wrap;
-  border-top:1px solid var(--line);padding-top:.6rem}
+footer{display:flex;align-items:center;gap:1.4rem;font-size:1rem;color:var(--dim);flex-wrap:wrap;
+  border-top:1px solid var(--line);padding-top:1.1rem}
 footer .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--dim);display:inline-block;margin-right:.45rem}
 footer .dot.up{background:#5AA469}
 footer .dot.down{background:#8C5A4A}
-/* A portrait panel is 1080px wide: two columns fit there with room to spare, so the layout
-   stays QR-left / details-right instead of stacking. Only the symbol is narrowed. The rule
-   this replaces collapsed to a single column on ANY portrait screen — the opposite of what
-   the room asked for, and measured as one 992.969px column at 1080x1920. */
-@media (max-aspect-ratio:1/1){ .qr canvas{width:min(30vh,40vw)} }
-/* A short panel has the least height to give, so the tiles sit beside each other rather than
-   stacking under the fold. */
-@media (max-height:820px){ .slots{grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))} }
-
-/* ---- the table this screen is following ----
-   The countdown and the honest statement of what the screen is waiting for. Shown whenever
-   the page's own address names a table; a single quiet line when it does not, because a wall
-   that shouts an operator instruction at the room is a worse wall. */
-.stage[data-table="waiting"] .qr canvas{width:min(24vh,18vw,18rem)}
-.stage[data-table="waiting"] .joinurl{font-size:.85rem}
-
-/* ---- the per-game details panel ----
-   Built by ./details.2cf2f248.mjs from a table keyed by game id: Kadi's rows and Shogi's rows are
-   different rows, and a game with no entry gets a panel that names itself and invents
-   nothing. Laid out as a wrapping grid of label/value rows so a wide stage gets more
-   columns rather than more height — the fit is a property of the layout, not of the words. */
-.panel{margin-top:.1rem;border:1px solid var(--line);border-radius:.8rem;background:#121E18;
-  padding:.6rem .8rem;display:flex;flex-direction:column;gap:.45rem;min-width:0}
-.panel[hidden]{display:none}
-.panel__head{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap}
-.panel__game{font-size:1.3rem;font-weight:700;color:var(--gold-hi)}
-.panel__rules{font-size:.88rem;color:var(--dim)}
-.panel__state{font-size:.88rem;font-weight:650;border:1px solid var(--line);border-radius:.45rem;
-  padding:.08rem .55rem;color:var(--cream);background:#0B1410}
-.panel__state[data-state="warn"]{border-style:dotted;color:#C9A66B}
-.panel__seats,.panel__facts,.panel__fields{display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(12.5rem,1fr));gap:.3rem .7rem;min-width:0}
-.panel__seats[hidden],.panel__facts[hidden],.panel__fields[hidden]{display:none}
-.panel__row{display:flex;flex-direction:column;min-width:0}
-.panel__k{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
-.panel__v{font-size:1rem;font-weight:600;overflow-wrap:anywhere;line-height:1.25}
-.panel__row--absent .panel__v{color:var(--dim);font-weight:500}
-.panel__row--unreadable .panel__v{color:#C9A66B;font-weight:500}
-.panel__row--open .panel__v{color:var(--dim);font-weight:500}
-.panel__foot{margin:0;font-size:.78rem;color:var(--dim);line-height:1.35}
-.panel__foot[hidden]{display:none}
-/* A short panel has the least height to give, and the panel is the tallest thing in the
-   details column. Measured at 1366x768 the column came to 476.4px inside a 473.9px row — a
-   2.5px overflow that the strict rule reports, and that a reader would never see. Tightening
-   here rather than shrinking the countdown or the scan code, which are the two things on this
-   screen that have to stay legible from across the room. */
-@media (max-height:820px){
-  .board{gap:.45rem}
-  .panel{padding:.45rem .65rem;gap:.35rem}
-  .panel__v{font-size:.95rem}
-  .panel__foot{font-size:.72rem;line-height:1.25}
-  .panel__seats,.panel__facts,.panel__fields{gap:.22rem .6rem}
-  .slots{gap:.45rem}
-  .slot{padding:.5rem .7rem}
-}
-/* A short panel has the least height to give, so the tiles sit beside each other rather than
-   stacking under the fold. */
-@media (max-height:820px){ .slots{grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))} }
+@media (max-aspect-ratio:1/1){ main{grid-template-columns:1fr;gap:1.6rem} .qr canvas{width:min(34vh,20rem)} }
 
 /* ---- game picker ----
    Sized for a screen read from across a room: no control smaller than a thumb, and
    every state distinguishable by more than colour alone. */
 .picker{grid-column:1/-1;border:1px solid var(--line);border-radius:.9rem;padding:1rem 1.1rem;background:#121E18}
-.picker__head{display:flex;align-items:baseline;gap:.9rem;flex-wrap:wrap;margin-bottom:.7rem}
-/* ---- the pairing prompt ----
-   Empty in the normal case: a display that is already paired shows nothing here, so the row
-   costs a paired wall exactly nothing. When it is shown, the CODE is the biggest thing on the
-   line, because somebody has to read it off a wall and type it into a phone. */
-.pair{display:inline-flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;border:1px solid var(--line);
-  border-radius:.6rem;padding:.25rem .7rem;background:#0B1410}
-.pair[hidden]{display:none}
-.pair__word{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-.pair__word[data-state="warn"]{color:#C9A66B}
-.pair__code{font-size:2.2rem;font-weight:800;letter-spacing:.12em;color:var(--gold-hi);line-height:normal;
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.pair__code[hidden]{display:none}
-.pair__say{font-size:.92rem;color:var(--cream);max-width:52ch;line-height:1.3}
-.picker__label{font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
-.picker__state{font-size:.95rem;font-weight:650;border:1px solid var(--line);border-radius:.5rem;
-  padding:.22rem .7rem;color:var(--cream);background:#0B1410}
-/* Seven states, told apart by a word first. The border style and colour are a second
-   signal on top of the word, never the signal on their own: a room read from across
-   the room cannot see a tint, and a person who cannot distinguish the tint must still
-   be able to read whether there is a game to play or a service to ring about. */
-.picker__state[data-state="loading"]{border-style:dashed;color:var(--dim)}
-.picker__state[data-state="ready"]{border-color:var(--gold);color:var(--gold-hi)}
-.picker__state[data-state="empty"],
-.picker__state[data-state="none-available"],
-.picker__state[data-state="unroutable"]{border-style:dotted;color:#C9A66B}
-.picker__state[data-state="unreachable"],
-.picker__state[data-state="unreadable"]{border-color:#8C5A4A;color:#E0A98F}
+.picker__label{font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:.7rem}
 .picker__games{display:flex;flex-wrap:wrap;gap:.6rem}
 .picker__game{font:inherit;font-size:1.05rem;border:1px solid var(--line);background:#0B1410;color:var(--cream);
   border-radius:.6rem;padding:.7rem 1.1rem;cursor:pointer;text-align:left;min-width:8.5rem}
 .picker__game:hover:not([disabled]){border-color:var(--gold)}
 .picker__game[aria-selected="true"]{border-color:var(--gold);background:#1C2A1F;box-shadow:inset 0 0 0 1px var(--gold)}
-/* A game the service does not offer is still shown, with the reason under it — the room
-   has to be able to tell "the operator switched it off" from "the screen is broken".
-   The dashed edge says "not selectable" without relying on colour or on the cursor. */
-.picker__game[disabled]{opacity:.8;cursor:not-allowed;border-style:dashed}
+.picker__game[disabled]{opacity:.55;cursor:not-allowed}
 .picker__game small{display:block;color:var(--dim);font-size:.78rem;margin-top:.2rem}
-.picker__game[disabled] small{color:#C9A66B}
-.picker__note{margin-top:.7rem;font-size:.92rem;color:var(--dim);max-width:70ch;line-height:1.45}
+.picker__note{margin-top:.7rem;font-size:.88rem;color:var(--dim)}
 .picker__note.warn{color:#C9A66B}
-.picker__detail{margin-top:.35rem;font-size:.8rem;color:var(--dim);
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}
-.picker__detail[hidden]{display:none}
-.qr[hidden]{display:none}
+.pair{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;border:1px solid var(--line);border-radius:.6rem;padding:.45rem .7rem;margin-bottom:.7rem;background:#0B1410}
+.pair[hidden]{display:none}
+.pair__word{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.pair__word[data-state="warn"]{color:#C9A66B}
+.pair__code{font-size:2.2rem;font-weight:800;letter-spacing:.12em;color:var(--gold-hi);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.pair__say{font-size:.9rem;color:var(--cream);max-width:56ch;line-height:1.35}
+
+/* ---- lobby ----
+   The room-facing state of a table that has been opened from this screen. Read from
+   across a room, so the roster is names at a large size rather than a table of
+   small print, and a seat that nobody has taken says so instead of being blank. */
+.lobby{grid-column:1/-1;border:1px solid var(--line);border-radius:.9rem;padding:1rem 1.1rem;background:#121E18}
+.lobby__head{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
+.lobby__label{font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.lobby__state{font-size:1.2rem;font-weight:650;color:var(--gold-hi)}
+.lobby__code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:1.5rem;letter-spacing:.18em;color:var(--cream)}
+.lobby__count{font-size:1rem;color:var(--dim)}
+.lobby__seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:.6rem;margin-top:.9rem}
+.seat{border:1px solid var(--line);border-radius:.6rem;padding:.6rem .8rem;display:flex;flex-direction:column;gap:.2rem}
+.seat .no{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seat .who{font-size:1.1rem;font-weight:600}
+.seat.empty{border-style:dashed;background:transparent}
+.seat.empty .who{color:var(--dim);font-weight:400}
+.seat.machine .who{color:var(--gold)}
+.seat .ready{font-size:.8rem;color:var(--gold)}
+.seat .waiting{font-size:.8rem;color:var(--dim)}
+.lobby__note{margin-top:.8rem;font-size:.92rem;color:var(--dim)}
+.lobby__note.warn{color:#C9A66B}
+
+/* ---- economic mode, funds and the sponsor surface ----
+   Read from across a room, so each fact is a line of its own. The three fund kinds
+   are three lines because they are three different accounts; there is no total on
+   this screen, and adding one would merge money that does not belong together. */
+.lobby__mode{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;margin-top:.9rem;padding-top:.8rem;border-top:1px solid var(--line)}
+.lobby__class{font-size:1.05rem;font-weight:600;color:var(--gold-hi)}
+.lobby__modenote{font-size:.88rem;color:var(--dim);flex-basis:100%}
+.lobby__funds{display:grid;grid-template-columns:repeat(auto-fill,minmax(12rem,1fr));gap:.6rem;margin-top:.8rem}
+.lobby__fund{border:1px solid var(--line);border-radius:.6rem;padding:.55rem .8rem;display:flex;flex-direction:column;gap:.15rem}
+.lobby__fund .k{font-size:.78rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
+.lobby__fund .v{font-size:1.15rem;font-weight:600}
+.lobby__fund .v.none{color:var(--dim);font-weight:400}
+.sponsor{display:grid;grid-template-columns:1fr auto;gap:.6rem 1.1rem;align-items:center;margin-top:1rem;padding-top:.9rem;border-top:1px solid var(--line)}
+.sponsor__head{display:flex;flex-direction:column;gap:.3rem}
+.sponsor__status{font-size:1.3rem;font-weight:650;color:var(--gold-hi)}
+.sponsor__qr{background:#F2E9D6;padding:.6rem;border-radius:.7rem;line-height:0}
+.sponsor__qr canvas{display:block;width:min(20vh,11rem);height:auto;image-rendering:pixelated}
+.sponsor__note{grid-column:1/-1;font-size:.9rem;color:var(--dim)}
+
+/* ---- modal ----
+   Centered, scroll-locked overlay with a single panel. The overlay traps focus
+   and closes on Escape or click outside. */
+.modal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7)}
+.modal__overlay{position:absolute;inset:0}
+.modal__panel{background:var(--panel);border:1px solid var(--line);border-radius:.9rem;padding:1.5rem 1.8rem;max-width:28rem;width:90%;max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:1.2rem;box-shadow:0 2rem 4rem rgba(0,0,0,0.5)}
+.modal__header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.modal__header h2{font-size:1.25rem;font-weight:650;color:var(--cream)}
+.modal__close{background:none;border:none;color:var(--dim);font-size:1.5rem;line-height:1;cursor:pointer;padding:.25rem}
+.modal__close:hover{color:var(--cream)}
+.modal__body{display:flex;flex-direction:column;gap:1rem}
+.setup__field{display:flex;flex-direction:column;gap:.4rem}
+.setup__field label{font-size:.85rem;color:var(--cream);font-weight:500}
+.setup__field input,.setup__field select{font:inherit;padding:.6rem .8rem;background:var(--bg);border:1px solid var(--line);border-radius:.5rem;color:var(--cream);width:100%}
+.setup__field input:focus,.setup__field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(217,169,60,0.3)}
+.setup__field fieldset{border:1px solid var(--line);border-radius:.5rem;padding:1rem;margin:0}
+.setup__field legend{font-size:.85rem;color:var(--dim);font-weight:500;margin-bottom:.5rem}
+.setup__radio{display:flex;align-items:center;gap:.5rem;font-size:.9rem;color:var(--cream);cursor:pointer}
+.setup__radio input{width:1rem;height:1rem;accent-color:var(--gold)}
+.modal__actions{display:flex;justify-content:flex-end;gap:.75rem;margin-top:.5rem}
+.setup__radio input[type="radio"]{accent-color:var(--gold)}
+.setup__field input[type="number"]{width:100%}
+.setup__field select{width:100%}
+.setup__hint{margin:.2rem 0 0;font-size:.82rem;color:var(--dim)}
 </style>
 </head>
 <body>
-<div class="stage" id="stage" data-table="no-table">
+<div class="stage">
   <header>
     <span class="brand">LastiKadi</span>
-    <span class="tag" id="venueTag">LastiKadi at the table</span>
+    <span class="tag" id="venueTag">Kadi at the table</span>
     <span class="spacer"></span>
     <span class="status" id="pairTag"></span>
     <span class="status" id="clock"></span>
   </header>
 
   <main>
-    <div class="picker" id="picker" data-state="loading">
-      <div class="picker__head">
-        <span class="picker__label">Choose a game</span>
-        <span class="picker__state" id="pickerState" data-state="loading">… Checking</span>
-        <!-- THE PAIRING PROMPT LIVES ON THIS LINE, and that is a layout decision made by
-             measurement: it shares a row the picker already has, so showing it costs no height
-             at any measured viewport and therefore cannot push the countdown or the details
-             panel out of the room. It is also where the instruction has to be: a code on a
-             wall with no sentence saying what to do with it is a dead end. -->
-        <span class="pair" id="pairBox" hidden>
-          <span class="pair__word" id="pairWord" data-state="ok">Not paired</span>
-          <span class="pair__code" id="pairCode"></span>
-          <span class="pair__say" id="pairSay"></span>
-        </span>
+    <div class="picker">
+      <div class="pair" id="pairBox" hidden>
+        <span class="pair__word" id="pairWord" data-state="ok">Not paired</span>
+        <span class="pair__code" id="pairCode"></span>
+        <span class="pair__say" id="pairSay"></span>
       </div>
-      <div class="picker__games" id="games" role="listbox" aria-label="Games this venue can host" aria-busy="true"></div>
-      <div class="picker__note" id="pickerNote" role="status">Checking which games this table service can host…</div>
-      <div class="picker__detail" id="pickerDetail" hidden></div>
+      <div class="picker__label">Choose a game</div>
+      <div class="picker__games" id="games" role="listbox" aria-label="Games available at this venue"></div>
+      <div class="picker__note" id="pickerNote">Checking which games this table service can host…</div>
+    </div>
+
+    <div class="lobby" id="lobby" hidden>
+      <div class="lobby__head">
+        <span class="lobby__label">Table</span>
+        <span class="lobby__state" id="lobbyState">—</span>
+        <span class="spacer"></span>
+        <span class="lobby__count" id="lobbyCount"></span>
+      </div>
+      <div class="lobby__head" style="margin-top:.5rem">
+        <span class="lobby__label">Join code</span>
+        <span class="lobby__code" id="lobbyCode">—</span>
+      </div>
+      <div class="lobby__seats" id="lobbySeats" aria-label="Seats at this table"></div>
+      <div class="lobby__note" id="lobbyNote"></div>
+
+      <!-- Economic mode, as the table service reported it. There is no control here
+           that names a mode: this screen renders the class or says it has none. -->
+      <div class="lobby__mode" id="lobbyMode" hidden>
+        <span class="lobby__label">Economic mode</span>
+        <span class="lobby__class" id="lobbyModeName">—</span>
+        <span class="lobby__modenote" id="lobbyModeNote"></span>
+      </div>
+
+      <!-- Sponsor funds, player funds and advertising, as three separate lines.
+           There is deliberately no total, and no control here that types an amount:
+           the amounts come from the economic service or they are not shown. -->
+      <div class="lobby__funds" id="lobbyFunds" hidden aria-label="Money on this table, by kind"></div>
+
+      <!-- The sponsor surface. Hidden unless the economic service has published the
+           sponsor capability AND the table's own configuration allows its code to be
+           shown on a shared display. -->
+      <div class="sponsor" id="sponsorPanel" hidden>
+        <div class="sponsor__head">
+          <span class="lobby__label">Sponsor</span>
+          <span class="sponsor__status" id="sponsorStatus">—</span>
+        </div>
+        <div class="sponsor__qr"><canvas id="sponsorQr" width="1" height="1" role="img" aria-label="Sponsor this table"></canvas></div>
+        <div class="sponsor__note" id="sponsorNote"></div>
+      </div>
     </div>
 
     <div class="joinbox">
-      <div class="clock">
-        <div class="clock__big" id="countdown" role="timer" aria-live="off" hidden></div>
-        <div class="clock__word" id="countdownWord" data-state="no-table">· No table named</div>
-        <div class="clock__detail" id="countdownDetail"></div>
-      </div>
-      <div class="qr" id="qrBox" hidden><canvas id="qr" width="1" height="1" role="img" aria-label="No game to open — nothing to scan"></canvas></div>
-      <div class="joinlabel" id="joinLabel">Checking the list of games…</div>
+      <div class="qr"><canvas id="qr" width="1" height="1" role="img" aria-label="No table code issued"></canvas></div>
+      <div class="joinlabel" id="joinLabel">No table code issued</div>
       <div class="joinurl" id="joinUrl"></div>
     </div>
 
-    <div class="board">
-      <h1 id="headline">Play at this table</h1>
+    <div class="board" id="pickerBoard">
+      <h1 id="headline">Start a table</h1>
       <p id="blurb">
-        Scan the code with a phone to open the game this screen has selected. Free to play,
-        no prizes, no wagering, no account. Play against the machine or pass the phone
-        around the table.
+        Choose a game to open a table. A phone QR appears only after the table service
+        issues a join code. Joining requires an account; an unavailable service cannot
+        open a shared table.
       </p>
-      <section class="panel" id="tablePanel" aria-label="This table" hidden>
-        <div class="panel__head">
-          <span class="panel__game" id="panelGame"></span>
-          <span class="panel__rules" id="panelRules"></span>
-          <span class="panel__state" id="panelState" data-state="ok"></span>
-        </div>
-        <div class="panel__seats" id="panelSeats"></div>
-        <div class="panel__facts" id="panelFacts"></div>
-        <div class="panel__fields" id="panelFields"></div>
-        <p class="panel__foot" id="panelFoot"></p>
-      </section>
       <div class="slots" id="slots"></div>
     </div>
+
+    <div class="board" id="gameBoard" hidden>
+      <div class="game-header">
+        <h1 id="gameTitle">Game in progress</h1>
+        <div class="game-status" id="gameStatus"></div>
+      </div>
+      <div class="game-table">
+        <div class="opponent-area" id="opponentArea"></div>
+        <div class="top-card" id="topCard"></div>
+        <div class="player-area">
+          <div class="hand" id="playerHand"></div>
+          <div class="directives" id="directives"></div>
+          <div class="game-actions">
+            <button id="btnDraw" class="btn btn-primary" disabled>Draw</button>
+            <button id="btnPass" class="btn btn-secondary" disabled>Pass</button>
+            <button id="btnFinish" class="btn btn-danger" disabled>Finish</button>
+            <button id="btnAnnounce" class="btn btn-warning" disabled>Announce</button>
+            <button id="btnRematch" class="btn btn-secondary" disabled>Rematch</button>
+          </div>
+        </div>
+        <div class="player-info" id="playerInfo"></div>
+      </div>
+      <div class="game-result" id="gameResult" hidden>
+        <h2 id="resultTitle"></h2>
+        <p id="resultDetail"></p>
+        <button id="btnRematchResult" class="btn btn-primary" hidden>Play Again</button>
+      </div>
+    </div>
   </main>
+
+  <!--
+    The setup step.
+
+    The economic class is a control here because an operator opening a table has to
+    be able to SAY which arrangement it is, and an unstated class is the ambiguity
+    this screen refuses to carry. What the operator cannot do on this screen is type
+    an amount, name a sponsor or switch a rail on: the class is a statement about the
+    table, and the amounts and the sponsor identity come from the economic service
+    or they are not shown at all. The sponsor QR visibility control is the operator's
+    own decision about whether a code may appear on a shared screen, which is why it
+    is a control and why it has no default: PRIVATE_OWNER draws nothing.
+  -->
+  <div class="modal" id="setupModal" hidden role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+    <div class="modal__overlay" id="setupOverlay"></div>
+    <form class="modal__panel" id="setupForm">
+      <div class="modal__header">
+        <h2 id="setupTitle">Set up this table</h2>
+        <button type="button" class="modal__close" id="btnCloseSetup" aria-label="Close">×</button>
+      </div>
+      <div class="modal__body">
+        <div class="setup__field">
+          <label for="setupGameType">How players sit</label>
+          <select id="setupGameType" name="setupGameType">
+            <option value="table">At one table</option>
+            <option value="online">Online</option>
+          </select>
+        </div>
+        <div class="setup__field">
+          <label for="setupCapacity">Seats</label>
+          <input type="number" id="setupCapacity" name="setupCapacity" min="2" max="12" step="1" value="6">
+        </div>
+        <div class="setup__field">
+          <label for="setupWaitSeconds">Waiting closes after (seconds)</label>
+          <input type="number" id="setupWaitSeconds" name="setupWaitSeconds" min="30" max="900" step="10" value="120">
+        </div>
+        <div class="setup__field">
+          <label for="setupRuleVersion">Rule version</label>
+          <input type="text" id="setupRuleVersion" name="setupRuleVersion" value="0.0.3">
+        </div>
+        <div class="setup__field">
+          <label for="setupMachineFill">Machine seats</label>
+          <select id="setupMachineFill" name="setupMachineFill">
+            <option value="allowed">Allowed</option>
+            <option value="disallowed">Not allowed</option>
+          </select>
+        </div>
+
+        <fieldset class="setup__field">
+          <legend>Economic mode</legend>
+          <label class="setup__radio"><input type="radio" name="setupEconomicMode" value="FREE" checked> Free play — nobody pays, nothing advertised</label>
+          <label class="setup__radio"><input type="radio" name="setupEconomicMode" value="AD_SUPPORTED_FREE"> Free with advertising — play costs nothing</label>
+          <label class="setup__radio"><input type="radio" name="setupEconomicMode" value="SPONSORED_FREE"> Free entry funded by a sponsor</label>
+          <label class="setup__radio"><input type="radio" name="setupEconomicMode" value="PAID_ENTRY"> Paid entry — a player pays to take a seat</label>
+          <label class="setup__radio"><input type="radio" name="setupEconomicMode" value="MIXED_SPONSOR_PAID"> Sponsor funding and player payments both present</label>
+          <p class="setup__hint" id="setupModeNote"></p>
+        </fieldset>
+
+        <fieldset class="setup__field" id="setupSponsorField" hidden>
+          <legend>Sponsor code on this display</legend>
+          <div class="setup__field">
+            <label for="setupSponsorQrVisibility">Visibility</label>
+            <select id="setupSponsorQrVisibility" name="setupSponsorQrVisibility">
+              <option value="PUBLIC">Show the code on the shared display</option>
+              <option value="PRIVATE_OWNER">Owner only — draw no code on this display</option>
+            </select>
+          </div>
+          <p class="setup__hint">The sponsor's name and any amount come from the economic service. They are not typed here.</p>
+        </fieldset>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn-secondary" id="btnCancelSetup">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btnCreateLobby">Open the table</button>
+      </div>
+    </form>
+  </div>
 
   <footer>
     <span><span class="dot" id="serverDot"></span><span id="serverText">Checking the table service…</span></span>
@@ -279,31 +335,140 @@ footer .dot.down{background:#8C5A4A}
 
 <script type="module">
 import { matrix } from './qr.28204555.mjs';
-import { STATES, planFor, qrPlan, readPortfolio, readSelectionFragment, renderPicker, selectionFragment } from './portfolio.16f1ebf8.mjs';
-import { TABLE_STATES, readTable, readTableCode, renderTable, tablePlan, withTableCode } from './table.e1c83b6e.mjs';
-import { panelPlan, renderPanel } from './details.2cf2f248.mjs';
 import {
-  PAIR_STATES, applyPairOutcome, clearToken, initialPairState, pairPlan, pairStep, pairingRevoked,
-  pollPairToken, requestPairCode, withAuthorization, writeToken,
-} from './pair.ab72088f.mjs';
-
+  createLobbyClient,
+  joinUrl,
+  seatmap,
+  occupancy,
+  secondsLeft,
+  formatCountdown,
+  activeDeadline,
+  describeState,
+} from './lobby.ea488197.mjs';
 /*
- * This screen talks to exactly one origin, and reads exactly two things from it: the
- * portfolio, which says which games this venue can host at all, and — when its own address
- * names one — a single table, which says whether that table is still waiting or already in
- * play and when its wait ends. There is no game list in this file and no default game. A
- * venue display that opens a game it has not been told about is the failure this page exists
- * to avoid, because a person standing at the table cannot tell a switched-off game from a
- * screen that is simply broken.
+ * Imported names are listed here and NOTHING ELSE is imported, on purpose.
  *
- * THE COUNTDOWN IS NOT THIS PAGE'S. It is the table service's `waitDeadline`, rendered as a
- * difference. Both this screen and the phone read the same absolute value from the same
- * public route, so the two countdowns cannot drift apart — see ./table.e1c83b6e.mjs. Nothing here
- * decides how long the wait is, and nothing here starts a table.
+ * A dead import is not a style question on this page: it is an unverified claim that
+ * the module exports that name, and the review that followed the first version of
+ * this slice found a page whose inline module did not parse at all while five
+ * source-regex tests passed over it. tests/page-runtime.test.mjs now parses and runs
+ * this module, so a missing export fails the suite instead of the browser.
  */
+import {
+  ECONOMIC_MODES,
+  LUGUTU_CLASS,
+  MODE_RULES,
+  SPONSOR_QR_ORIGIN,
+  describeEconomicMode,
+  emptyFunds,
+  fundsBreakdown,
+  validateConfiguration,
+  sponsorQrPayload,
+  describeSponsorStatus,
+  createCommercialClient,
+} from './commercial.93ad4126.mjs';
+import {
+  PAIR_STATES, applyPairOutcome, initialPairState, pairPlan, pairStep,
+  pollPairToken, requestPairCode, withAuthorization, writeToken,
+} from './pair.52cd70a6.mjs';
+
 const TABLE_SERVICE = 'https://api.lastikadi.com';
 
 const $ = (id) => document.getElementById(id);
+
+function deviceStorage() {
+  try { return typeof localStorage === 'undefined' ? null : localStorage; }
+  catch { return null; }
+}
+
+let pair = initialPairState(deviceStorage());
+let pairBusy = false;
+
+function paintPairing() {
+  const plan = pairPlan(pair, Date.now());
+  $('pairBox').hidden = !plan.shows;
+  $('pairWord').textContent = plan.word;
+  $('pairWord').dataset.state = plan.warn ? 'warn' : 'ok';
+  $('pairCode').textContent = plan.userCode || '';
+  $('pairCode').hidden = !plan.userCode;
+  $('pairSay').textContent = plan.say;
+  $('pairTag').textContent = plan.paired ? 'paired' + (plan.username ? ' as ' + plan.username : '') : '';
+  return plan;
+}
+
+async function stepPairing() {
+  if (pairBusy) return;
+  const step = pairStep(pair, Date.now());
+  if (step.action !== 'request' && step.action !== 'poll') return;
+  pairBusy = true;
+  try {
+    if (step.action === 'request') {
+      pair = applyPairOutcome(pair, await requestPairCode((url, init) => fetch(url, init)), Date.now());
+    } else {
+      const result = await pollPairToken((url, init) => fetch(url, init), pair.deviceCode);
+      if (result.outcome === PAIR_STATES.APPROVED && !writeToken(deviceStorage(), result, Date.now())) {
+        pair = { ...pair, state: PAIR_STATES.FORGOTTEN, detail: 'this browser could not keep the screen credential' };
+      } else {
+        pair = applyPairOutcome(pair, result, Date.now());
+      }
+    }
+  } finally {
+    pairBusy = false;
+  }
+  paintPairing();
+}
+
+function withDeviceAuth(init) {
+  return withAuthorization(init, pair.token);
+}
+
+/*
+ * ---- the lobby ----
+ *
+ * A lobby is opened on the table service and the room joins it by code. The screen
+ * shows what the service reports and nothing else: if the service answers with no
+ * lobby, the panel's only content is the sentence saying so.
+ *
+ * THIS DISPLAY'S LOBBY-CREATION FLOW HAS NOT BEEN PROVEN AGAINST PRODUCTION. The
+ * phone's published player can resolve and join an issued code, but that does not
+ * prove this screen can open one. The injected tests exercise the service's honest
+ * failure branches; no live TV lobby or table is claimed here.
+ *
+ * The client is constructed here, before anything that could call it, because
+ * rendering the game list selects a game and selection opens a lobby.
+ */
+const lobby = createLobbyClient({
+  request: (path, init) => fetch(TABLE_SERVICE + path, withDeviceAuth(init)),
+  now: () => Date.now(),
+  clientPath: '/play/',
+});
+
+/*
+ * ---- the commercial contract ----
+ *
+ * The screen names an economic class because the class decides what may be shown,
+ * and it does not decide the class itself: that comes from the table service's own
+ * configuration and from the economic service's published capability list. Two
+ * measured facts are why this is shaped the way it is, both taken 2026-10-07:
+ *
+ *   fintech.lastikadi.com/capabilities.json -> 200, and the sponsor capability this
+ *     screen needs is NOT in it, so no sponsor surface exists on the published
+ *     surface today.
+ *   api.lastikadi.com/portfolio -> 200 with kadi and shogi, and neither game carries a
+ *     commercial block, so no class is reported and every non-FREE mode fails closed.
+ *
+ * So in production today this panel reads "no commercial configuration has been
+ * reported", which is the truth, and the sponsor surface is hidden rather than shown
+ * with placeholder values. That is not a stub dressed as a feature: it is the correct
+ * answer to a service that has not published the inputs.
+ */
+const commercial = createCommercialClient({
+  request: (url, init) => fetch(url, init),
+  willeOrigin: 'https://fintech.lastikadi.com',
+  tableService: TABLE_SERVICE,
+});
+
+let lobbyTimer = null;
 
 /* ---- QR: drawn as a canvas so it stays crisp at any panel size ---- */
 function drawQr(canvas, text) {
@@ -323,6 +488,15 @@ function drawQr(canvas, text) {
       if (m[r][c]) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
     }
   }
+}
+
+function clearJoinQr() {
+  const canvas = $('qr');
+  canvas.width = 1;
+  canvas.height = 1;
+  canvas.setAttribute('aria-label', 'No table code issued');
+  $('joinLabel').textContent = 'No table code issued';
+  $('joinUrl').textContent = '';
 }
 
 /* ---- clock: a venue display should look alive ---- */
@@ -369,27 +543,19 @@ async function checkService() {
   dot.className = 'dot ' + (up ? 'up' : 'down');
   if (up) {
     txt.textContent = 'Table service online';
+    $('headline').textContent = 'Tables at this venue';
     renderSlots([
       { label: 'Service', value: 'Online', state: 'wait' },
       { label: 'Open tables', value: '—' },
       { label: 'Players', value: '—' },
     ]);
   } else {
-    /*
-     * This probe answers one question — is the service up — and it is worded as exactly
-     * that, nothing more. It deliberately does not say anything about which games exist:
-     * the picker is the only part of this screen entitled to say that, and it says it
-     * from the portfolio. Two probes, two claims, neither borrowed from the other.
-     *
-     * The earlier wording here was "offline play only", which belonged to a screen that
-     * always had a game to offer. This screen offers a game only once the service has
-     * named one, so that sentence is gone rather than left to contradict the picker.
-     */
-    txt.textContent = 'Could not confirm the table service is up';
+    txt.textContent = 'Table service unavailable — tables cannot be opened';
+    $('headline').textContent = 'Start a table';
     renderSlots([
-      { label: 'Service', value: 'Unconfirmed', state: 'off' },
-      { label: 'Open tables', value: '—' },
-      { label: 'Players', value: '—' },
+      { label: 'Shared table', value: 'Unavailable' },
+      { label: 'Join code', value: 'Not issued' },
+      { label: 'Service', value: 'Unavailable', state: 'off' },
     ]);
   }
   return up;
@@ -397,276 +563,747 @@ async function checkService() {
 
 /* ---- game selection ----
  *
- * Everything about which games exist, which of them can be opened and what a scan
- * carries is decided in ./portfolio.16f1ebf8.mjs, from the table service's own answer, and is
- * testable without a browser. Everything about the table this screen is following — and
- * about how long its wait has left — is decided in ./table.e1c83b6e.mjs, and everything about what
- * that game's table shows a room is decided in ./details.2cf2f248.mjs. This page contributes the
- * network calls, the canvas, the clock and the click — and no decisions.
+ * The list of games is READ from the table service, never written here. The venue
+ * screen is the surface most likely to be showing a game the server does not actually
+ * host, because it is the one nobody reloads: hard-coding a list would let it advertise
+ * a game that fails at the table, and a game the operator has switched off would simply
+ * vanish with no explanation.
  *
- * The one rule the whole arrangement exists to keep: nothing here can render a game as
- * selectable unless the portfolio says it is available. `gameButton()` binds `disabled`
- * to the plan's `selectable` and to nothing else, and tests/tv-portfolio.test.mjs fails
- * if an unavailable game ever comes out of that path clickable.
+ * The two label tables below are PRESENTATION only — how a game id is spelled on screen
+ * and which client a scan should open. Neither decides anything about a game, and an
+ * unknown id is spelled from its own id and pointed at a sensible default, so a newly
+ * registered game appears without a client change.
  */
-
-const ui = {
-  panel: $('picker'),
-  chip: $('pickerState'),
-  games: $('games'),
-  note: $('pickerNote'),
-  detail: $('pickerDetail'),
-  venueTag: $('venueTag'),
-  joinLabel: $('joinLabel'),
-};
-const tableUi = {
-  stage: $('stage'),
-  countdown: $('countdown'),
-  countdownWord: $('countdownWord'),
-  countdownDetail: $('countdownDetail'),
-};
-const panelUi = {
-  panel: $('tablePanel'),
-  panelGame: $('panelGame'),
-  panelRules: $('panelRules'),
-  panelState: $('panelState'),
-  panelSeats: $('panelSeats'),
-  panelFacts: $('panelFacts'),
-  panelFields: $('panelFields'),
-  panelFoot: $('panelFoot'),
-};
-const qrBox = $('qrBox');
-const qrCanvas = $('qr');
-const joinUrl = $('joinUrl');
-const pairBox = $('pairBox');
-const pairWord = $('pairWord');
-const pairCode = $('pairCode');
-const pairSay = $('pairSay');
-const pairTag = $('pairTag');
-
-/* ---- pairing ----
- *
- * The credential this device holds is kept in THIS BROWSER and sent only as an
- * `Authorization` header — never in the address, never in the scan code, never in an element.
- * ./pair.ab72088f.mjs owns all of that. All this page does is drive the state machine on its own tick
- * and paint what it says.
- *
- * `localStorage` is reached through a guard rather than `window.localStorage`, because a
- * browser that refuses storage (private mode, blocked cookies) must produce an honest sentence
- * on the screen rather than a thrown exception that takes the whole display down.
- */
-function deviceStorage() {
-  try {
-    return typeof localStorage === 'undefined' ? null : localStorage;
-  } catch {
-    return null;
-  }
-}
-let pair = initialPairState(deviceStorage());
-let pairBusy = false;
-
-function paintPairing() {
-  const pp = pairPlan(pair, Date.now());
-  pairBox.hidden = !pp.shows;
-  pairWord.textContent = pp.word;
-  pairWord.dataset.state = pp.warn ? 'warn' : 'ok';
-  pairCode.textContent = pp.userCode || '';
-  pairCode.hidden = !pp.userCode;
-  pairSay.textContent = pp.say;
-  // What the screen is waiting for, as data on the element: an operator can read the gap off
-  // the page instead of inferring it from a sentence.
-  if (pp.needs) pairSay.dataset.needs = pp.needs;
-  else delete pairSay.dataset.needs;
-  pairTag.textContent = pp.paired ? 'paired' + (pp.username ? ' as ' + pp.username : '') : '';
-  return pp;
-}
+const GAME_LABELS = { kadi: 'LastiKadi', go: 'Go', shogi: 'Shogi', bridge: 'Bridge' };
+const GAME_CLIENTS = { kadi: '/play/', go: '/go/', shogi: '/shogi/', bridge: '/bridge/' };
 
 /**
- * One step of the pairing, driven by the page's tick.
- *
- * Nothing here polls on a timer of its own: ./pair.ab72088f.mjs decides whether a step is due, honours
- * the service's `intervalSeconds`, backs off when the service says to slow down, and stops at
- * approved, at expired and at a refusal. This function only carries out the step it is given.
+ * Default configuration per game.
+ * Each game can specify its own default table size, wait time, rule version, and machine fill policy.
  */
-async function stepPairing() {
-  if (pairBusy) return;
-  const step = pairStep(pair, Date.now());
-  if (step.action !== 'request' && step.action !== 'poll') return;
-  pairBusy = true;
-  try {
-    if (step.action === 'request') {
-      pair = applyPairOutcome(
-        { ...pair, state: PAIR_STATES.REQUESTING },
-        { outcome: PAIR_STATES.REQUESTING, detail: pair.detail },
-        Date.now(),
-      );
-      paintPairing();
-      pair = applyPairOutcome(pair, await requestPairCode((url, init) => fetch(url, init)), Date.now());
-    } else {
-      const result = await pollPairToken((url, init) => fetch(url, init), pair.deviceCode);
-      if (result.outcome === PAIR_STATES.APPROVED) {
-        // Kept before the state says "paired", so a screen never claims a pairing it did not
-        // manage to store: a token that lives only in a variable is gone at the next reload.
-        writeToken(deviceStorage(), result, Date.now());
-      }
-      pair = applyPairOutcome(pair, result, Date.now());
-    }
-  } finally {
-    pairBusy = false;
+const GAME_DEFAULTS = {
+  kadi: {
+    gameType: 'table',
+    capacity: 6,
+    waitSeconds: 120,
+    ruleVersion: '0.0.3',
+    machineFill: 'allowed',
+  },
+  go: {
+    gameType: 'table',
+    capacity: 4,
+    waitSeconds: 180,
+    ruleVersion: '0.0.1',
+    machineFill: 'disallowed',
+  },
+  shogi: {
+    gameType: 'table',
+    capacity: 2,
+    waitSeconds: 300,
+    ruleVersion: '0.0.1',
+    machineFill: 'disallowed',
+  },
+  bridge: {
+    gameType: 'table',
+    capacity: 4,
+    waitSeconds: 300,
+    ruleVersion: '0.0.1',
+    machineFill: 'disallowed',
+  },
+};
+const gameLabel = (id) => GAME_LABELS[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : id);
+let selected = null;
+
+function renderGames(games) {
+  const host = $('games');
+  host.innerHTML = '';
+  for (const game of games) {
+    const btn = document.createElement('button');
+    btn.className = 'picker__game';
+    btn.type = 'button';
+    btn.setAttribute('role', 'option');
+    btn.dataset.gameId = game.gameId;
+    btn.disabled = !game.available;
+    // A disabled control still has to say WHY, or the room is left guessing whether the
+    // screen is broken or the game is.
+    btn.title = game.available ? 'Choose ' + gameLabel(game.gameId)
+      : gameLabel(game.gameId) + ' — ' + (game.unavailableReason || 'not available');
+    btn.innerHTML = '';
+    btn.appendChild(document.createTextNode(gameLabel(game.gameId)));
+    const sub = document.createElement('small');
+    sub.textContent = game.available
+      ? 'rules v' + game.ruleVersion
+      : (game.unavailableReason || 'not available');
+    btn.appendChild(sub);
+    btn.addEventListener('click', () => select(game));
+    host.appendChild(btn);
   }
-  paintPairing();
-  // A pairing that just landed changes what the screen may read, so the table is re-read
-  // immediately rather than at the next polite interval.
-  if (pair.state === PAIR_STATES.APPROVED) loadTable();
-}
-
-/** Every read of the table service carries this device's credential when it has one. */
-function withDeviceAuth(init) {
-  return withAuthorization(init, pair.token);
-}
-
-/*
- * The chosen game survives a reload. A venue screen is left on for days and reloaded by
- * whoever finds it, and re-picking the first game the service lists would quietly swap
- * the game under a code somebody already scanned — a different table from the one the
- * person is standing at. So the choice rides on this page's own address and is read back
- * before the portfolio is even fetched.
- *
- * The table this screen follows rides there too, as ?code= — see ./table.e1c83b6e.mjs for why that
- * is the only way a code can reach a display today.
- */
-let chosen = readSelectionFragment(location.hash);
-let tableCode = readTableCode(location.search, location.hash);
-let outcome = { state: STATES.LOADING, games: [], detail: '' };
-let plan = planFor(outcome, chosen);
-let tableOutcome = tableCode
-  ? { state: TABLE_STATES.READING, table: null, detail: '' }
-  : { state: TABLE_STATES.NO_TABLE, table: null, detail: '' };
-let tableP = tablePlan(tableOutcome, plan.selection, Date.now());
-
-function paint(next) {
-  plan = renderPicker(document, ui, next || planFor(outcome, chosen));
-
-  if (plan.selection) {
-    // The carried choice becomes whatever the screen actually shows, so a sentence about
-    // a game that was replaced is said once rather than every five minutes.
-    chosen = { gameId: plan.selection.gameId, ruleVersion: plan.selection.ruleVersion };
-    const carried = withTableCode(selectionFragment(plan.selection), tableCode);
-    if (carried !== location.hash) {
-      // The address is the page's own state, not somewhere the back button should go.
-      // When there is no selection it is left alone: it still records what was chosen,
-      // which is what lets the choice come back when the service does.
-      history.replaceState(null, '', location.pathname + location.search + carried);
-    }
+  // Keep the current choice if it is still on offer; otherwise take the first available.
+  const previousGameId = selected?.gameId ?? null;
+  const stillThere = games.find((g) => g.gameId === previousGameId && g.available);
+  const firstAvailable = games.find((g) => g.available);
+  if (stillThere) select(stillThere, true);
+  else if (firstAvailable) select(firstAvailable, true);
+  else if (selected) {
+    selected = null;
+    stopPolling();
+    lobby.clear();
+    clearJoinQr();
+    renderLobby();
   }
-  paintTable();
-  return plan;
 }
 
-/**
- * Everything the table contributes to the screen: the countdown, whether the scan code is
- * still standing, and the per-game details panel.
- *
- * Kept separate from paint() because the countdown is re-rendered on a fast tick while the
- * portfolio is only re-read every five minutes — a wall needs the seconds to move without
- * redrawing the scan code sixty times a minute.
- */
-function paintTable() {
-  tableP = tablePlan(tableOutcome, plan.selection, Date.now());
-  renderTable(document, tableUi, tableP);
-
-  const scan = qrPlan(plan);
-  /*
-   * The scan code's job ends when play begins, so it goes when the table says the cards are
-   * on the table (or when the code turned out not to be a table at all). It stays when the
-   * table could not be read, because the game and version it carries are still true and
-   * taking the only way in off a wall would punish the room for the screen's fault.
-   */
-  const show = scan.show && tableP.scanAllowed;
-  if (show) {
-    drawQr(qrCanvas, scan.url);
-    qrBox.hidden = false;
-    joinUrl.textContent = scan.text;
-    ui.joinLabel.textContent = plan.joinLabel;
-  } else {
-    // No verified game, no scan code — and no code either once the table is in play: a code
-    // left pointing at a game this screen can no longer vouch for is a link to a table
-    // nobody opened.
-    qrBox.hidden = true;
-    joinUrl.textContent = '';
-    ui.joinLabel.textContent = scan.show
-      ? 'Scan code removed — ' + tableP.word.toLowerCase()
-      : plan.joinLabel;
+function select(game, quiet) {
+  const keepsOpenLobby = quiet && lobby.joinCode && lobby.lobby?.gameId === game.gameId;
+  selected = game;
+  for (const btn of document.querySelectorAll('.picker__game')) {
+    btn.setAttribute('aria-selected', String(btn.dataset.gameId === game.gameId));
   }
-  qrCanvas.setAttribute('aria-label', scan.ariaLabel);
-
-  renderPanel(document, panelUi, panelPlan({
-    outcome, selection: plan.selection, table: tableP, paired: pair.state === PAIR_STATES.APPROVED,
-  }));
-  return tableP;
+  $('venueTag').textContent = gameLabel(game.gameId) + ' at the table';
+  if (!quiet) $('pickerNote').className = 'picker__note';
+  if (!keepsOpenLobby) {
+    $('pickerNote').textContent = gameLabel(game.gameId) + ' selected — rules v' + game.ruleVersion
+      + ' on runtime interface v' + game.runtimeInterfaceVersion
+      + '. No phone QR appears until the table service issues a join code.';
+  }
+  // A quiet select happens when the page loads or refreshes a list that already had
+  // a choice. Opening a lobby is a real request, so it only happens on a person's
+  // selection, never as a side effect of re-reading the portfolio.
+  if (!quiet) openLobbyFor(game);
+  else if (!keepsOpenLobby) {
+    stopPolling();
+    lobby.clear();
+    clearJoinQr();
+    renderLobby();
+  }
 }
-
-function select(gameId) {
-  const card = plan.games.find((g) => g.gameId === gameId);
-  // Belt and braces on the one rule: the click is refused unless the plan itself says
-  // this game is selectable, so nothing can reach `chosen` past the portfolio.
-  if (!card || card.selectable !== true) return;
-  paint(planFor(outcome, { gameId }));
-}
-
-$('games').addEventListener('click', (event) => {
-  const target = event.target;
-  const card = target && typeof target.closest === 'function' ? target.closest('.picker__game') : null;
-  if (card && card.dataset && card.dataset.gameId) select(card.dataset.gameId);
-});
 
 async function loadPortfolio() {
-  // Handed a function rather than the bare global, so the reader never depends on `this`
-  // and the tests can hand it a stub.
-  outcome = await readPortfolio((url, init) => fetch(url, init));
-  paint(planFor(outcome, chosen));
+  try {
+    const r = await fetch(TABLE_SERVICE + '/portfolio', { method: 'GET' });
+    if (!r.ok) throw new Error('status ' + r.status);
+    const manifest = await r.json();
+    const games = Array.isArray(manifest.games) ? manifest.games : [];
+    renderGames(games);
+    if (!games.length) {
+      $('pickerNote').className = 'picker__note warn';
+      $('pickerNote').textContent = 'This table service hosts no games right now.';
+    } else if (!games.some((g) => g.available)) {
+      $('pickerNote').className = 'picker__note warn';
+      $('pickerNote').textContent = 'No game is switched on at this table service right now.';
+    }
+  } catch (e) {
+    // The honest failure. An empty or invented selector would look like a working screen
+    // with nothing to offer, which is a different and much worse statement.
+    $('games').innerHTML = '';
+    $('pickerNote').className = 'picker__note warn';
+    $('pickerNote').textContent = 'Could not read the list of games from the table service.';
+  }
+}
+
+/* ---- lobby rendering ---- */
+
+/** Build one seat, from the service's own report or not at all. */
+function seatEl(seat) {
+  const el = document.createElement('div');
+  el.className = 'seat' + (seat.empty ? ' empty' : '') + (seat.machine ? ' machine' : '');
+  const no = document.createElement('span');
+  no.className = 'no';
+  no.textContent = 'Seat ' + seat.seatNo;
+  const who = document.createElement('span');
+  who.className = 'who';
+  // An empty seat says it is empty. It never says a name nobody gave.
+  who.textContent = seat.empty ? 'Empty' : (seat.displayName || 'Unnamed player');
+  el.appendChild(no);
+  el.appendChild(who);
+  if (!seat.empty) {
+    const flag = document.createElement('span');
+    flag.className = seat.ready || seat.machine ? 'ready' : 'waiting';
+    flag.textContent = seat.machine ? 'Machine' : seat.ready ? 'Ready' : 'Not ready';
+    el.appendChild(flag);
+  }
+  return el;
+}
+
+function renderLobby() {
+  const panel = $('lobby');
+  const live = lobby.lobby;
+  const failure = lobby.failure;
+  if (!live && !failure) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+
+  $('lobbyState').textContent = live ? describeState(live.state) : 'No table opened';
+  $('lobbyCode').textContent = lobby.joinCode || '—';
+
+  const counts = live ? occupancy(live) : null;
+  if (counts) {
+    const deadline = activeDeadline(live);
+    const remaining = formatCountdown(secondsLeft(deadline.deadline, Date.now()));
+    const machineSeats = seatmap(live).filter((seat) => !seat.empty && seat.machine).length;
+    $('lobbyCount').textContent = counts.ready + ' ready including machines · '
+      + counts.filled + ' of ' + counts.capacity + ' seats · ' + machineSeats + ' machine seats'
+      + (remaining === null ? '' : ' · ' + deadline.label + ': ' + remaining);
+  } else {
+    $('lobbyCount').textContent = '';
+  }
+
+  const seats = $('lobbySeats');
+  seats.innerHTML = '';
+  // No roster is drawn unless the service sent one. An entirely empty grid would be
+  // a picture of a lobby that does not exist.
+  if (live && Array.isArray(live.seats)) {
+    for (const seat of seatmap(live)) seats.appendChild(seatEl(seat));
+  }
+
+  const note = $('lobbyNote');
+  note.className = 'lobby__note' + (failure ? ' warn' : '');
+  if (failure) {
+    note.textContent = failure.text;
+  } else if (live?.state === 'READY' || live?.state === 'STARTING' || live?.state === 'LIVE') {
+    note.textContent = 'The table service decides when the game starts. This screen only shows it.';
+  } else {
+    note.textContent = 'Scan the code with a phone to take a seat.';
+  }
+
+  renderCommercial();
+}
+
+/* ---- the commercial panel ----
+ *
+ * Three things, in this order, and each one is allowed to say "not reported":
+ *
+ *   1. the economic class, which the table service's configuration names or does not;
+ *   2. the three fund kinds, each its own line, because they are three accounts;
+ *   3. the sponsor surface, which appears only when the economic service has
+ *      published the sponsor capability and the table's own configuration allows its
+ *      code on a shared display.
+ *
+ * Nothing here is derived from a scan, a redirect or a browser success screen. The
+ * status shown is the status the service reported, and an unevidenced confirmation is
+ * deliberately shown as still processing.
+ */
+function renderCommercial() {
+  renderEconomicMode();
+  renderFunds();
+  renderSponsor();
+}
+
+function renderEconomicMode() {
+  const panel = $('lobbyMode');
+  const validation = commercial.validation;
+  // No configuration reported means the panel stays hidden and the room is told by
+  // the lobby note. It never defaults to FREE, because FREE is a claim about the
+  // table that nobody has made.
+  if (!validation) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  $('lobbyModeName').textContent = validation.ok ? validation.economicMode : 'Not reported';
+  $('lobbyModeNote').textContent = validation.ok
+    ? describeEconomicMode(validation.economicMode) + modeNotices(validation)
+    : validation.text;
+  panel.className = 'lobby__mode' + (validation.ok ? '' : ' warn');
 }
 
 /**
- * Read the table this screen follows. Nothing is read when the address names no table: a
- * screen that invented a table to follow would be advertising a table nobody opened.
+ * The extra sentence a class owes the room, chosen per class.
  *
- * A refusal (401/403) is the ONE answer a screen must never soften: the credential it holds is
- * not accepted, so it is discarded and the screen goes back to pairing rather than retrying a
- * rejected token in a loop or falling back to a read it is not entitled to.
+ * Written as an explicit branch on each class rather than a table of flags, because
+ * the reason these are different sentences is exactly that the classes are different
+ * arrangements: an advertising-supported table owes the room a statement that nothing
+ * was charged and no rule changed, and a paid table owes it a statement about who
+ * pays. A shared sentence would be true of all five and therefore useless on a
+ * screen that exists to make an arrangement legible.
  */
-async function loadTable() {
-  if (!tableCode) return;
-  tableOutcome = await readTable((url, init) => fetch(url, withDeviceAuth(init)), tableCode);
-  if (tableOutcome.state === TABLE_STATES.REFUSED) {
-    clearToken(deviceStorage());
-    pair = pairingRevoked(pair, tableOutcome.detail);
-    paintPairing();
-  }
-  paintTable();
+function modeNotices(mode) {
+  if (mode.economicMode === 'FREE') return ' Nobody pays anything, and nothing is sold here.';
+  if (mode.economicMode === 'AD_SUPPORTED_FREE') return ' Advertising may be shown. Playing costs nothing and no rule changes because of it.';
+  if (mode.economicMode === 'SPONSORED_FREE') return ' A sponsor pays for entry. No player is asked for money at this table.';
+  if (mode.economicMode === 'PAID_ENTRY') return ' A player pays to take a seat. Any amount is set by the economic service, not on this screen.';
+  if (mode.economicMode === 'MIXED_SPONSOR_PAID') return ' Some entry is sponsor-funded and some is paid for. The two are accounted for separately.';
+  return '';
 }
 
-paint(plan);
+/** Three lines, one per fund kind. There is deliberately no combined figure. */
+function renderFunds() {
+  const panel = $('lobbyFunds');
+  const validation = commercial.validation;
+  if (!validation?.ok) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  panel.innerHTML = '';
+  for (const row of fundsBreakdown(validation.funds ?? emptyFunds())) {
+    const box = document.createElement('div');
+    box.className = 'lobby__fund';
+    const k = document.createElement('span');
+    k.className = 'k';
+    k.textContent = row.kind === 'ADVERTISING' ? 'Advertising' : row.kind === 'SPONSOR' ? 'Sponsor funds' : 'Player funds';
+    const v = document.createElement('span');
+    v.className = 'v';
+    if (!row.reported) {
+      v.className = 'v none';
+      v.textContent = 'not reported';
+    } else if (row.confirmedMinor === 0) {
+      v.className = 'v none';
+      v.textContent = 'none';
+    } else {
+      // A confirmed amount in its own currency, in minor units as reported. The
+      // screen does not convert, does not total, and does not round-trip it through
+      // a number it could re-interpret.
+      v.textContent = row.currency ? `${row.confirmedMinor} minor units ${row.currency}` : `${row.confirmedMinor} minor units, currency not reported`;
+    }
+    box.appendChild(k);
+    box.appendChild(v);
+    panel.appendChild(box);
+  }
+}
+
+function renderSponsor() {
+  const panel = $('sponsorPanel');
+  const sponsorQr = commercial.sponsorQr;
+  // The decision is the module's and it needs two independent answers. A shared
+  // display under PRIVATE_OWNER draws nothing at all — not a blurred code, not a
+  // placeholder — because a restricted code that is drawn is a published code.
+  if (!sponsorQr.show) {
+    hideSponsorPanel();
+    return;
+  }
+  /*
+   * Third gate, added after review: an ALLOWED decision is not a code.
+   *
+   * A configuration can legitimately say "a sponsor may be shown here" and still
+   * carry no opaque code, because the code is issued per sponsor intent by the
+   * economic service. Without this gate the panel would appear with a status line
+   * and an empty canvas, which reads to a room as "sponsorship is active, the code
+   * is just not drawn yet" — an invitation to ask someone who will have none. So the
+   * panel is hidden unless there is a real code to draw, and the reason recorded is
+   * the module's reason rather than a local guess.
+   */
+  const payload = sponsorQrPayload(SPONSOR_QR_ORIGIN, commercial.sponsorCode);
+  if (!payload.ok) {
+    hideSponsorPanel();
+    panel.dataset.sponsorRefusal = payload.reason;
+    return;
+  }
+  delete panel.dataset.sponsorRefusal;
+  const sponsor = commercial.sponsor;
+  const status = describeSponsorStatus(sponsor.status, sponsor.statusSource);
+  panel.hidden = false;
+  $('sponsorStatus').textContent = status.label;
+  drawQr($('sponsorQr'), payload.text);
+  $('sponsorQr').setAttribute('aria-label', 'Scan to sponsor this table');
+  $('sponsorNote').textContent = sponsorQr.text;
+}
+
+/**
+ * Take the whole sponsor panel off the screen.
+ *
+ * Hiding AND clearing, because `hidden` on its own leaves the last drawn code in the
+ * canvas and the last status in the DOM — a later screenshot, a later accessibility
+ * tree dump or a later cache read would still find them.
+ */
+function hideSponsorPanel() {
+  const panel = $('sponsorPanel');
+  panel.hidden = true;
+  const canvas = $('sponsorQr');
+  canvas.width = 1;
+  canvas.height = 1;
+  canvas.setAttribute('aria-label', 'No sponsor code is available to show');
+  $('sponsorStatus').textContent = '—';
+  $('sponsorNote').textContent = '';
+}
+
+/** Stop polling. Called whenever the lobby settles or the game changes. */
+function stopPolling() {
+  if (lobbyTimer !== null) clearInterval(lobbyTimer);
+  lobbyTimer = null;
+}
+
+/** Poll at the interval the current state deserves. */
+function schedulePolling() {
+  stopPolling();
+  const every = lobby.pollMs;
+  lobbyTimer = setInterval(async () => {
+    await lobby.refresh();
+    renderLobby();
+    if (lobby.settled) stopPolling();
+    else if (lobby.pollMs !== every) schedulePolling();
+  }, every);
+}
+
+/**
+ * Show the setup modal and return the configuration when the user submits.
+ * Returns null if the user cancels.
+ */
+async function showSetupModal(game) {
+  return new Promise((resolve) => {
+    const modal = $('setupModal');
+    const form = $('setupForm');
+
+    // Pre-fill from the game's own defaults. The defaults are applied BEFORE the
+    // form is shown and never reset afterwards: resetting a form after writing the
+    // defaults would hand the operator empty fields that look like values.
+    const defaults = GAME_DEFAULTS[game.gameId] || {};
+    $('setupGameType').value = defaults.gameType || 'table';
+    $('setupCapacity').value = defaults.capacity ?? 6;
+    $('setupWaitSeconds').value = defaults.waitSeconds ?? 120;
+    $('setupRuleVersion').value = defaults.ruleVersion ?? '0.0.3';
+    $('setupMachineFill').value = defaults.machineFill ?? 'allowed';
+
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    const firstField = form.querySelector('select, input');
+    if (firstField && typeof firstField.focus === 'function') firstField.focus();
+
+    let settled = false;
+    /*
+     * Every listener this dialog adds is removed in `close`, and `close` runs exactly
+     * once whichever way the dialog is dismissed.
+     *
+     * Previously the Escape handler removed itself and nothing else did: a dialog
+     * dismissed with Cancel, Submit or the overlay left its document-level keydown
+     * listener attached forever. On a venue screen that is opened and closed all day
+     * by an operator, the listeners accumulate one per opening, and a later Escape
+     * closes a dialog that is not open. The `on*` functions are held here precisely
+     * so `close` has something to detach.
+     */
+    const onSubmit = (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      close({
+        gameType: data.get('setupGameType'),
+        capacity: parseInt(data.get('setupCapacity'), 10),
+        waitSeconds: parseInt(data.get('setupWaitSeconds'), 10),
+        ruleVersion: data.get('setupRuleVersion'),
+        machineFill: data.get('setupMachineFill'),
+        economicMode: data.get('setupEconomicMode'),
+        sponsorQrVisibility: MODE_RULES[data.get('setupEconomicMode')]?.sponsor
+          ? data.get('setupSponsorQrVisibility')
+          : null,
+      });
+    };
+    const onCancel = () => close(null);
+    const onOverlay = () => close(null);
+    const onKey = (event) => {
+      if (event.key !== 'Escape') return;
+      close(null);
+    };
+
+    const close = (result) => {
+      if (settled) return;
+      settled = true;
+      form.removeEventListener('submit', onSubmit);
+      $('btnCloseSetup').removeEventListener('click', onCancel);
+      $('btnCancelSetup').removeEventListener('click', onCancel);
+      $('setupOverlay').removeEventListener('click', onOverlay);
+      document.removeEventListener('keydown', onKey);
+      modal.hidden = true;
+      document.body.style.overflow = '';
+      resolve(result);
+    };
+
+    form.addEventListener('submit', onSubmit);
+    $('btnCloseSetup').addEventListener('click', onCancel);
+    $('btnCancelSetup').addEventListener('click', onCancel);
+    $('setupOverlay').addEventListener('click', onOverlay);
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+/**
+ * Reflect the chosen economic class in the setup form.
+ *
+ * The sponsor visibility control appears only for a class that has a sponsor, and
+ * it is not given a value of its own: an absent choice is an absent decision, and
+ * the module refuses a sponsor class that has not made one. The radio for a mode
+ * that the table service does not offer is disabled rather than hidden, so the room
+ * can see that the mode exists here and is not available on this table.
+ */
+function syncSetupCommercial(config) {
+  const validation = validateConfiguration(config);
+  const note = $('setupModeNote');
+  for (const radio of document.querySelectorAll('input[name="setupEconomicMode"]')) {
+    const mode = radio.value;
+    // The list of modes comes from the module, not from a literal written here, so
+    // the five classes are the module's five classes.
+    radio.disabled = !ECONOMIC_MODES.includes(mode) || !MODE_RULES[mode];
+  }
+  const chosen = document.querySelector('input[name="setupEconomicMode"]:checked');
+  const sponsorField = $('setupSponsorField');
+  if (!chosen || !MODE_RULES[chosen.value]?.sponsor) {
+    sponsorField.hidden = true;
+  } else {
+    sponsorField.hidden = false;
+    $('setupSponsorQrVisibility').value = 'PRIVATE_OWNER';
+  }
+  if (!validation.ok) {
+    note.textContent = validation.text;
+  } else if (validation.economicMode !== chosen?.value) {
+    note.textContent = `The table service reports this table as ${validation.economicMode}. Whatever is chosen here is a statement about the table this screen is about to open.`;
+  } else {
+    note.textContent = describeEconomicMode(validation.economicMode);
+  }
+}
+
+/**
+ * Get a stable TV identifier for lobby binding.
+ * Uses a persistent ID stored in localStorage, or generates a new one.
+ */
+function getTvId() {
+  const storage = deviceStorage();
+  let tvId = storage && storage.getItem('tvId');
+  if (!tvId) {
+    tvId = 'tv_' + Math.random().toString(36).substring(2, 10);
+    if (storage) storage.setItem('tvId', tvId);
+  }
+  return tvId;
+}
+
+/** Open a table for a game, then keep the roster current. */
+async function openLobbyFor(game) {
+    stopPolling();
+    const path = GAME_CLIENTS[game.gameId] || '/play/';
+    clearJoinQr();
+
+    /*
+     * Read the commercial inputs BEFORE the operator is asked anything, so the setup
+     * form can say what this table actually is. Both reads are independent: an
+     * unreadable capability manifest and an unreadable portfolio each leave their own
+     * side absent, and neither one stops the other from being read.
+     */
+    await commercial.loadCapabilities();
+    const commercialRead = await commercial.loadGame(game.gameId);
+    syncSetupCommercial(commercial.configuration);
+    // Render whatever those two answers support, before the dialog takes the room's
+    // attention. A panel that is only drawn after the dialog closes is a panel nobody
+    // sees on the setup step, which is the only step this matters on.
+    renderCommercial();
+
+    // Show setup modal to configure the table before creating the lobby
+    const setup = await showSetupModal(game);
+    if (!setup) {
+      // User cancelled setup
+      renderCommercial();
+      return;
+    }
+
+    /*
+     * The economic class travels with the lobby request under its GOVERNANCE name,
+     * which is the name the configuration hash is computed over. A screen-side alias
+     * would mean a table whose hash and whose class disagree, so the mapping happens
+     * once, here, through the module.
+     */
+    const economicClass = LUGUTU_CLASS[setup.economicMode] ?? null;
+
+    // Create lobby with the configured settings
+    const result = await lobby.open(game.gameId, setup.capacity, {
+      waitSeconds: setup.waitSeconds,
+      ruleVersion: setup.ruleVersion,
+      gameType: setup.gameType,
+      machineFill: setup.machineFill,
+      tvId: getTvId(),
+      ...(economicClass ? { economicClass } : {}),
+      ...(setup.sponsorQrVisibility ? { sponsorQrVisibility: setup.sponsorQrVisibility } : {}),
+    });
+    renderLobby();
+
+    if (!result.ok) {
+      // Without an issued table code, a generic client link would not prove that a
+      // phone is joining this room. Keep the QR blank and show the service failure.
+      return;
+    }
+
+    const url = joinUrl(lobby.joinCode, path, result.lobby.gameId, result.lobby.ruleVersion);
+    if (url) {
+      drawQr($('qr'), url);
+      $('joinUrl').textContent = url.replace(/^https?:\/\//, '');
+      $('joinLabel').textContent = 'Scan to join this table';
+      $('qr').setAttribute('aria-label', 'Scan to join ' + gameLabel(result.lobby.gameId) + ' table ' + lobby.joinCode);
+      $('venueTag').textContent = gameLabel(result.lobby.gameId) + ' at the table';
+      const storage = deviceStorage();
+      if (storage) storage.setItem('lastikadi.tv.activeLobby', JSON.stringify({
+        joinCode: lobby.joinCode,
+        gameId: result.lobby.gameId,
+        ruleVersion: result.lobby.ruleVersion,
+        clientPath: path,
+      }));
+      $('pickerNote').textContent = result.lobby.gameId + ' · rules v' + result.lobby.ruleVersion
+        + ' · table ' + lobby.joinCode + ' issued by the table service.';
+    } else {
+      clearJoinQr();
+    }
+    // A refused commercial configuration is reported next to the table rather than in
+    // place of it: the table is open and playable, and the mode it was opened under
+    // is still something the room has been told about.
+    if (!commercialRead.ok) renderCommercial();
+    schedulePolling();
+  }
+
+/** Restore the exact table this display opened; never create a replacement on reload. */
+async function resumeSavedLobby() {
+  const storage = deviceStorage();
+  if (!storage) return;
+  let saved;
+  try { saved = JSON.parse(storage.getItem('lastikadi.tv.activeLobby') || 'null'); }
+  catch { storage.removeItem('lastikadi.tv.activeLobby'); return; }
+  if (!saved || typeof saved.joinCode !== 'string') return;
+
+  const result = await lobby.resume(saved.joinCode);
+  renderLobby();
+  if (!result.ok) {
+    if (lobby.failure?.id === 'absent' || lobby.failure?.id === 'bad-join-code') {
+      storage.removeItem('lastikadi.tv.activeLobby');
+    }
+    return;
+  }
+
+  const live = result.lobby;
+  const path = GAME_CLIENTS[live.gameId] || saved.clientPath || '/play/';
+  const url = joinUrl(saved.joinCode, path, live.gameId, live.ruleVersion);
+  if (!url) return;
+  drawQr($('qr'), url);
+  $('joinUrl').textContent = url.replace(/^https?:\/\//, '');
+  $('joinLabel').textContent = 'Scan to join this table';
+  $('qr').setAttribute('aria-label', 'Scan to join ' + gameLabel(live.gameId) + ' table ' + saved.joinCode);
+  $('venueTag').textContent = gameLabel(live.gameId) + ' at table ' + saved.joinCode;
+  $('pickerNote').className = 'picker__note';
+  $('pickerNote').textContent = 'Restored table ' + saved.joinCode + '. Every scan joins this same table.';
+  schedulePolling();
+}
+
+// The sponsor visibility control only exists for a class that has a sponsor, so the
+// radio group re-syncs it whenever the class changes rather than at submit time, when
+// the operator would already be looking at the wrong controls.
+for (const radio of document.querySelectorAll('input[name="setupEconomicMode"]')) {
+  radio.addEventListener('change', () => syncSetupCommercial(commercial.configuration));
+}
+
+clearJoinQr();
+$('build').textContent = 'tv.lastikadi.com';
 paintPairing();
 stepPairing();
-$('build').textContent = 'tv.lastikadi.com';
+setInterval(stepPairing, 1000);
 tick();
 setInterval(tick, 20000);
-// The seconds have to move, and the table's own state has to be noticed when it changes
-// under the screen — a wait that ends, or a host who deals.
-setInterval(paintTable, 500);
-setInterval(loadTable, 2000);
-// The pairing state machine decides what a step is and when it is due; this only drives it.
-setInterval(stepPairing, 1000);
 checkService();
-loadPortfolio();
-loadTable();
+loadPortfolio().then(resumeSavedLobby);
 // Re-check politely: a venue screen left on all day should notice a service
 // coming up without hammering it.
 setInterval(checkService, 60000);
 // The portfolio changes when an operator installs or switches a game, so a long-lived
 // screen re-reads it too rather than showing yesterday's list until someone reboots it.
 setInterval(loadPortfolio, 300000);
+
+/* ---- game view ----
+ *
+ * NOT WIRED, DELIBERATELY, AND IT REFUSES RATHER THAN RENDERS.
+ *
+ * The renderer below draws `state.hand` — a player's private cards — and it is
+ * reachable only through `enterGame`. This screen is the SHARED venue display, and
+ * the authority boundary for this surface says a shared display renders the public
+ * projection and never a player's private hand. So `enterGame` no longer switches
+ * views: it states the boundary and returns. It previously had no caller at all and
+ * was a live latent path to publishing a private hand on a television.
+ *
+ * If a public-projection game view is wanted later, it belongs on this screen as a
+ * new function built from the public state, not by reviving this one with a private
+ * hand in it.
+ */
+let tableView = null;
+let currentGameId = null;
+let currentPlayerId = null;
+
+async function enterGame(gameId, playerId) {
+  currentGameId = gameId;
+  currentPlayerId = playerId;
+  tableView = null;
+  const board = $('gameBoard');
+  const result = $('gameResult');
+  board.hidden = true;
+  result.hidden = true;
+  $('lobby').hidden = false;
+  $('resultTitle').textContent = 'This screen does not show a private hand';
+  $('resultDetail').textContent =
+    'This is the shared display. It shows the table, the join code and the roster. A player\'s cards stay on that player\'s own device.';
+  result.hidden = false;
+  return { ok: false, reason: 'private-state-not-projectable' };
+}
+
+/** Handle player actions from the game view. */
+async function handleGameAction(action) {
+  // No action is taken on a shared display. The private-hand view is not reachable
+  // from here (see enterGame), so a click arriving from a stale control writes
+  // nothing rather than sending a play on somebody's behalf.
+  if (!tableView) return { ok: false, reason: 'no-game-view-on-a-shared-display' };
+  return { ok: false, reason: 'no-game-view-on-a-shared-display' };
+}
+
+/**
+ * Render the game state to the DOM.
+ *
+ * REFUSES. This renderer draws `state.hand`, which is a player's private cards, and
+ * this screen is the shared display. It is kept only so the refusal is explicit and
+ * so a future public-projection renderer is added deliberately rather than by
+ * deleting one guard at a time. Nothing routes engine state into it.
+ */
+function renderGameState() {
+  return { ok: false, reason: 'private-state-not-projectable' };
+}
+
+
+/*
+ * The card renderer that used to live here is gone, and its removal is the point.
+ *
+ * It declared `symbolForFamily` twice, which is a module-level SyntaxError rather
+ * than a runtime one: it stopped the ENTIRE inline module from parsing, so nothing
+ * on this page ran — not the picker, not the lobby, not the commercial panel. It
+ * also built `cardLabel` from a `symbols` constant that did not exist in its scope,
+ * so it would have thrown a ReferenceError on the first hand it was asked to draw.
+ * Both were fixed in place first so the defect was confirmed and not guessed at, and
+ * the renderer was then deleted because the surface it fed — a shared television
+ * drawing a player's private cards — must not exist on this screen.
+ *
+ * tests/page-runtime.test.mjs asserts this module parses and runs, so a
+ * source-regex test can never again pass over a page that does not execute.
+ */
+
+// Add the game view styles
+const style = document.createElement('style');
+style.textContent = `
+  .card { display: inline-flex; flex-direction: column; align-items: center; width: 60px; height: 84px; border: 2px solid var(--line); border-radius: 8px; background: var(--panel); padding: 4px; cursor: default; transition: transform 0.1s, box-shadow 0.1s; }
+  .card.playable { cursor: pointer; border-color: var(--gold); }
+  .card.playable:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(217, 169, 60, 0.4); }
+  .card-face-down { background: linear-gradient(135deg, var(--panel) 0%, var(--line) 100%); }
+  .card-symbol { font-size: 1.5rem; margin-bottom: 2px; }
+  .card-value { font-size: 1.5rem; font-weight: 700; }
+  .hand { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 1rem 0; min-height: 100px; }
+  .directives { display: flex; gap: 8px; justify-content: center; margin: 1rem 0; flex-wrap: wrap; }
+  .btn { padding: 8px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: opacity 0.1s; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--gold); color: var(--bg); }
+  .btn-secondary { background: var(--panel); color: var(--cream); border: 1px solid var(--line); }
+  .btn-danger { background: #C94A4A; color: white; }
+  .btn-warning { background: var(--gold-hi); color: var(--bg); }
+  .game-status { font-size: 1.1rem; color: var(--gold-hi); margin: 0.5rem 0; }
+  .game-table { display: grid; grid-template-rows: auto auto 1fr auto; gap: 1rem; }
+  .opponent-area { min-height: 120px; display: flex; align-items: center; justify-content: center; color: var(--dim); }
+  .top-card { display: flex; justify-content: center; margin: 1rem 0; }
+  .player-area { display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+  .hand { min-height: 100px; }
+  .directives { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .game-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+  .player-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; font-size: 0.9rem; color: var(--dim); padding: 1rem; background: var(--panel); border-radius: 8px; }
+  .game-result { text-align: center; padding: 2rem; }
+  .game-result h2 { font-size: 2rem; color: var(--gold); margin-bottom: 1rem; }
+  .game-result p { font-size: 1.1rem; color: var(--dim); }
+`;
+document.head.appendChild(style);
 </script>
 </body>
 </html>
