@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#18261D">
+<title>LastiKadi — Play Kadi</title>
+<link rel="manifest" href="./site.0e8d4a4e.webmanifest">
+<link rel="icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<link rel="apple-touch-icon" href="/assets/brand/lastikadi-logo-192.788cee43.png">
+<style>
+:root{--bg:#18261D;--panel:#1F332A;--panel2:#263D31;--gold:#D9A93C;--gold-hi:#F0C766;
+--cream:#F2E9D6;--dim:#9FB3A6;--line:#3A5346;--danger:#C4553F;--ok:#5AA469}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--cream);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;min-height:100dvh}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-size:17px;margin:0;letter-spacing:.3px}
+header .brand{color:var(--gold);font-weight:700}
+header .spacer{flex:1}
+.pill{border:1px solid var(--line);background:var(--panel2);color:var(--cream);border-radius:999px;
+padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+.pill:hover{border-color:var(--gold)}
+.pill[disabled]{opacity:.45;cursor:not-allowed}
+.mode{font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+main{flex:1;display:flex;flex-direction:column;gap:8px;padding:8px;max-width:1100px;margin:0 auto;width:100%;min-height:0}
+/* NO FLOOR THAT PUSHES CONTENT OFF THE SCREEN. The table and the hand carried min-height
+   220px and 132px; on a 360x640 phone with seven cards that made the document 743px tall in
+   a 640px viewport, so the hand and the footer sat below the fold and the page scrolled. A
+   page you must scroll to reach your own cards is not "fitting" — the same complaint the
+   Founder made about the venue display. The floors now shrink instead, and the measurement
+   asserts the document does NOT scroll. */
+.table{flex:1 1 auto;min-height:0;border:1px solid var(--line);border-radius:14px;
+background:radial-gradient(120% 90% at 50% 0%,#24402F 0%,#1B2C22 55%,#16241C 100%);
+position:relative;display:flex;align-items:center;justify-content:center;padding:10px}
+.tablecenter{display:flex;flex-direction:column;align-items:center;gap:10px}
+.status{font-size:14px;color:var(--dim);text-align:center;min-height:20px}
+.status.alert{color:var(--gold-hi)}
+.status.bad{color:var(--danger)}
+.directive{font-size:12px;color:var(--gold);text-align:center;min-height:16px}
+.opp{position:absolute;top:8px;left:12px;font-size:13px;color:var(--dim)}
+.deck{position:absolute;top:8px;right:12px;font-size:13px;color:var(--dim)}
+.hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:flex-end;min-height:0}
+.card{width:74px;height:108px;border-radius:9px;background:var(--cream);color:#1B2C22;border:2px solid #00000022;
+box-shadow:0 3px 10px #0006;position:relative;display:flex;flex-direction:column;justify-content:space-between;
+padding:6px 7px;cursor:pointer;transition:transform .09s ease;user-select:none}
+.card:hover{transform:translateY(-6px)}
+.card.playable{outline:2px solid var(--gold);outline-offset:2px}
+/* A card the authority has not judged: offered as a request, never claimed as legal. */
+.card.attempt{outline:2px dashed var(--line);outline-offset:2px;cursor:pointer}
+.card.attempt:hover{transform:translateY(-6px)}
+.card.attempt::after{content:'ask';position:absolute;top:4px;right:5px;font-size:8px;letter-spacing:.06em;
+color:#1B2C2277;text-transform:uppercase}
+.banner{background:var(--danger);color:#FFF4EF;font-size:13px;font-weight:600;line-height:1.35;
+padding:9px 14px;text-align:center}
+.banner[hidden]{display:none}
+/* THE REFUSED LINK. It used to reuse the danger banner, which is the offline-practice
+   surface — so a link this client could not serve painted "OFFLINE PRACTICE — this is NOT
+   the venue game" over a screen that had opened nothing at all. A refusal is a refusal, not
+   a mode: it is its own colour, it never wears the word PRACTICE, and it never appears on a
+   screen that is playing anything. */
+.banner.banner-refused{background:#43271F;color:#F3D9CF;border-bottom:1px solid #6B3B2C}
+/* THE WAITING SURFACE, with the countdown the Founder asked for. Sized so it cannot push
+   the hand or the footer off a 360px-tall screen: the number is one line and the seat line
+   is one line, and both have their floors removed by the short-screen rule below. */
+.wait{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.wait[hidden]{display:none}
+.waitclock{font-size:44px;font-weight:700;color:var(--gold-hi);line-height:1.05;
+font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.waitlabel{font-size:13px;color:var(--cream)}
+.waitseats{font-size:12px;color:var(--dim)}
+.seatrow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.seat{border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:11px;color:var(--dim);background:var(--panel2)}
+.seat.open{border-style:dashed;color:var(--gold-hi)}
+.waitcode{font-size:11px;color:var(--dim);letter-spacing:.08em}
+.card.wild{outline:2px dashed var(--gold-hi);outline-offset:2px}
+.card.dim{opacity:.42;cursor:not-allowed}
+.card.dim:hover{transform:none}
+.card .rank{font-size:20px;font-weight:700;line-height:1}
+.card .family{font-size:11px;font-weight:600}
+.card .glyph{font-size:26px;align-self:center}
+.card .name{font-size:9px;color:#1B2C2255;text-align:center}
+.card.red{color:#A8322A}.card.black{color:#1B2C22}
+.card.joker{background:linear-gradient(135deg,#F2E9D6 0%,#E4D3AE 100%)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding-bottom:4px;align-items:center}
+button.act{background:var(--gold);color:#20170A;border:0;border-radius:10px;padding:11px 18px;font-size:15px;
+font-weight:650;cursor:pointer;font-family:inherit}
+button.act:hover{background:var(--gold-hi)}
+button.act[disabled]{opacity:.4;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--cream);border:1px solid var(--line)}
+button.ghost:hover{border-color:var(--gold)}
+.families{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.winner{font-size:22px;color:var(--gold);text-align:center}
+.a11y{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border-top:1px solid var(--line)}
+/* The phone held sideways, and the small phone. Seven cards must be reachable without
+   scrolling and with the controls and the footer still on screen, so the cards shrink and
+   the chrome tightens rather than the page growing a scrollbar. Measured at 740x360 and
+   360x640; tests/layout.test.mjs asserts the document does not scroll at either. */
+@media (max-width:420px){.card{width:48px;height:72px}.card .rank{font-size:14px}.card .glyph{font-size:17px}
+  .card .name{font-size:8px}.card .family{font-size:10px}}
+@media (max-height:700px){
+  .card{width:48px;height:72px}
+  .card .rank{font-size:14px}.card .glyph{font-size:17px}
+  header{padding:5px 10px}
+  main{gap:5px;padding:5px}
+  footer{padding:3px 10px;font-size:11px}
+  button.act{padding:7px 12px;font-size:13px}
+  /* The status and directive lines carried min-heights that, on a 360px-tall screen, pushed
+     the table's own content past its box and into the line below it — measured as a 2.4px
+     intersection between #status and #banner, and between #controls and #pile. They give way
+     here, so nothing touches anything. The waiting clock gives way too, by the same rule and
+     for the same reason: the countdown may not be the thing that pushes a control off the
+     screen. */
+  .status{min-height:0;font-size:13px}
+  .directive{min-height:0;font-size:11px}
+  .tablecenter{gap:6px}
+  .table{padding:6px}
+  .waitclock{font-size:30px}
+  .wait{gap:2px}
+  .waitlabel{font-size:12px}
+}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">LastiKadi</span>
+  <h1 id="surface">Reading the link…</h1>
+  <span class="mode" id="mode">checking</span>
+  <span class="spacer"></span>
+  <button class="pill" id="btn-new">New table</button>
+  <button class="pill" id="btn-offline" title="Play a practice game on this phone only. No table is opened and nothing reaches the server.">Practise offline</button>
+</header>
+<div class="banner" id="banner" hidden></div>
+
+<main>
+  <section class="table" aria-label="Table">
+    <div class="opp" id="opp"></div>
+    <div class="deck" id="deck"></div>
+    <div class="tablecenter">
+      <div class="wait" id="wait" hidden>
+        <div class="waitclock" id="waitclock">—</div>
+        <div class="waitlabel" id="waitlabel"></div>
+        <div class="seatrow" id="waitseats"></div>
+        <div class="waitcode" id="waitcode"></div>
+      </div>
+      <div class="status" id="status" role="status" aria-live="polite">Reading the link…</div>
+      <div class="directive" id="directive"></div>
+      <div id="pile" aria-label="Top card"></div>
+    </div>
+  </section>
+  <div class="controls" id="controls"></div>
+  <div class="hand" id="hand" aria-label="Your hand"></div>
+</main>
+
+<footer>
+  Free to play. No prizes. No wagering. Rules by the canonical Kadi engine —
+  the same engine the Android app uses.
+</footer>
+<div class="a11y" id="live" aria-live="polite"></div>
+
+<script src="./kadi-runtime-browser.8e8a5365.js"></script>
+<script type="module">
+import { GameHost, LocalAuthority, NetworkAuthority } from './host.e30228b1.mjs';
+import { SERVED, planForLink, planForRuntime } from './identity.777b0687.mjs';
+import {
+  OUTCOMES, PLAY_DESCRIPTOR_GAP, POLL_MS, SERVICE_BASE, joinSharedTable, joinVenue,
+} from './session.2a075b2c.mjs';
+import { countdown, readCode, waitPlan } from './waiting.8f28fe40.mjs';
+
+/** The offline engine's own seat LABELS. They are not account ids and never leave this phone. */
+const OFFLINE_HUMAN = 1, OFFLINE_MACHINE = 2;
+
+/*
+ * WHICH GAME AND RULES VERSION THIS PAGE WAS OPENED FOR, and WHICH TABLE.
+ *
+ * Decided once, from this page's own address, before anything is dealt — not from a
+ * constant in this file. The venue display puts the identity it selected into the scan
+ * code (`?game=kadi&v=0.0.3`) and, when it opens a table for a room to share, the code that
+ * names that table (`&code=9KP6ARTDQT`); this is the code that reads both, and the rules
+ * about what happens when either is absent, unknown or a different version live in
+ * ./identity.777b0687.mjs and ./waiting.8f28fe40.mjs so they are tested rather than inspected.
+ *
+ * There is deliberately no default game here. A link that names nothing this client can
+ * serve deals nothing, and says so. That is the same standard the venue screen already
+ * meets: a game it cannot vouch for is drawn named and unpressable rather than offered.
+ */
+let identity = planForLink(location.search);
+
+/** The table this scan named, if it named one. Resolved publicly, before any sign-in. */
+const scannedCode = readCode(location.search);
+
+/**
+ * This browser's own storage, so a second scan opens a new table instead of a new account.
+ */
+const store = {
+  get: (k) => { try { return localStorage.getItem('venue.' + k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem('venue.' + k, String(v)); } catch { /* private mode */ } },
+  remove: (k) => { try { localStorage.removeItem('venue.' + k); } catch { /* private mode */ } },
+};
+
+const SUITS = {
+  Heart: { glyph: '\u2665', red: true }, Kisu: { glyph: '\u2666', red: true },
+  Mavi: { glyph: '\u2663', red: false }, Spade: { glyph: '\u2660', red: false },
+  Joker: { glyph: '\u2605', red: false },
+};
+const SPECIALS = {
+  '2': 'adds 2 to the penalty', '7': 'blocks the next player', '8': 'turns the table',
+  'J': 'goes anywhere, names what follows', Joker: 'wipes the penalty, adds 5 — only a Joker answers it',
+};
+const $ = (id) => document.getElementById(id);
+const Ctor = (typeof KadiRuntime !== 'undefined' && KadiRuntime.KadiRuntimeJs) || null;
+
+let host = null, authority = null, view = null, busy = false;
+/* The table this page is at, and whose seat it holds. Null while there is no table. */
+let table = null, mySeat = OFFLINE_HUMAN;
+
+/*
+ * THE THREE STATES A SCREEN CAN BE IN, kept apart because conflating two of them is the
+ * defect this file was fixed for.
+ *
+ *   offline   OFFLINE PRACTICE. A mode, entered only by its own labelled control, and the
+ *             only state that may show the red OFFLINE PRACTICE banner.
+ *   blocked   THIS LINK CANNOT BE SERVED. A refusal. Nothing is dealt, nothing is
+ *             pressable, and it is NOT practice: `offline` used to be set here as well, to
+ *             reuse one boolean for two jobs, so a refused link painted the full red
+ *             "OFFLINE PRACTICE — this is NOT the venue game" banner over a screen with no
+ *             game in it at all. A guest reading that is told they are playing a practice
+ *             game; they are not playing anything.
+ *   waiting   A NAMED TABLE THAT HAS NOT STARTED. The countdown lives here, and it is
+ *             derived from the service's own `waitDeadline` on every repaint — never from a
+ *             timer of this page's own, so the phone and the venue display cannot disagree.
+ */
+let offline = false, blocked = false, waiting = null, waitTimer = null;
+
+/**
+ * What mode the screen is in, said unmistakably and before any card is dealt.
+ *
+ * Offline practice used to be reached by a FAILED network attempt and looked exactly like
+ * the venue game: the same header, the same "Practice" word, no sign that nothing had
+ * reached the server. A guest played, believed he had played, and no table existed. So the
+ * word OFFLINE is on the surface, the mode pill, and a banner that cannot be missed —
+ * all three, set before the first deal, and none of them reachable without a deliberate
+ * press on a control that says what it does.
+ */
+function paintMode() {
+  $('surface').textContent = identity.title;
+  const banner = $('banner');
+  if (offline) {
+    $('mode').textContent = 'offline practice · nothing reaches the server';
+    banner.hidden = false;
+    banner.className = 'banner';
+    banner.textContent = 'OFFLINE PRACTICE — this is NOT the venue game. It runs on this phone alone: no table was opened, no move is recorded, and nothing was sent anywhere.';
+  } else if (waiting && waiting.pending) {
+    $('mode').textContent = 'the table service · waiting for table ' + waiting.code;
+    banner.hidden = true;
+    banner.textContent = '';
+  } else if (blocked) {
+    $('mode').textContent = 'nothing opened';
+    banner.hidden = true;
+    banner.textContent = '';
+  } else {
+    $('mode').textContent = 'the table service · rules v' + identity.ruleVersion;
+    banner.hidden = true;
+    banner.textContent = '';
+  }
+  $('btn-new').textContent = offline ? 'Deal again' : 'New table';
+  $('btn-offline').disabled = offline || blocked;
+  $('btn-offline').textContent = offline ? 'Offline' : 'Practise offline';
+}
+
+/** Offline practice, entered only by an explicit press. Never by a failure. */
+function startOffline() {
+  stopWaiting();
+  offline = true; blocked = false; waiting = null; table = null; mySeat = OFFLINE_HUMAN;
+  paintMode();
+  authority = new LocalAuthority(Ctor, {
+    gameId: identity.engineGameId, entropy: String(Date.now()), human: OFFLINE_HUMAN, machine: OFFLINE_MACHINE,
+  });
+  host = new GameHost(authority, { localSeat: OFFLINE_HUMAN });
+  return host.start();
+}
+
+/**
+ * The venue: sign in, find this phone's own account, open a table of it and the
+ * commissioned machine seat, and read that table back. Nothing here falls back anywhere.
+ */
+async function startVenue() {
+  const game = SERVED[identity.game];
+  const joined = await joinVenue(fetch.bind(globalThis), SERVICE_BASE, store, game);
+  if (joined.outcome !== OUTCOMES.OPEN) return failVenue(joined);
+  stopWaiting();
+  offline = false; blocked = false; waiting = null;
+  table = joined.table;
+  mySeat = table.accountId;
+  authority = new NetworkAuthority(SERVICE_BASE, { token: joined.session.token, table });
+  host = new GameHost(authority, { localSeat: mySeat });
+  paintMode();
+  await host.start();
+  return null;
+}
+
+/** Why the service refused, in its own terms — never guessed, and never about the network. */
+const WHY = Object.freeze({
+  [OUTCOMES.NO_ACCOUNT]: 'The table service would not start a session for this phone.',
+  [OUTCOMES.ID_UNKNOWN]: 'This phone could not establish which account it is, so it cannot claim a seat.',
+  [OUTCOMES.SEAT_REFUSED]: 'The table service refused a seat at the table this client asked for.',
+  [OUTCOMES.UNREACHABLE]: 'The table service did not answer.',
+  [OUTCOMES.SERVICE_FAULT]: 'The table service answered with a fault of its own.',
+  [OUTCOMES.CODE_UNKNOWN]: 'This link names a table the table service does not know.',
+});
+
+/**
+ * No table was opened. NOTHING is dealt, and the reason given is the service's own.
+ *
+ * The sentence this replaced said "the game server is not reachable" for every failure.
+ * That was false — /readiness answered 200 the whole time — and it pointed everyone who
+ * read it at the network instead of at the client. So an unreachable outcome is CHECKED
+ * against /readiness before it is reported, and the two facts are kept apart.
+ */
+async function failVenue(joined) {
+  stopWaiting();
+  offline = false; blocked = false; waiting = null;
+  table = null; host = null; authority = null; view = null;
+  paintMode();
+  $('surface').textContent = identity.title;
+  $('mode').textContent = 'no table open';
+  const st = $('status');
+  st.className = 'status bad';
+
+  let sentence = WHY[joined.outcome] || 'The table could not be opened.';
+  if (joined.error) sentence += ' The service said: ' + joined.error;
+  if (joined.outcome === OUTCOMES.SEAT_REFUSED) {
+    // The machine seat is a named constant that no player-accessible surface publishes (see
+    // play/identity.mjs), so when the service refuses it the number this client believed is
+    // part of the fault report rather than left as "Forbidden".
+    const seat = joined.machineId || (SERVED[identity.game] && SERVED[identity.game].machineAccountId);
+    if (seat) sentence += ' The commissioned machine seat this client names is account ' + seat
+      + '; the service has to accept it, or this client needs updating.';
+  }
+  if (joined.outcome === OUTCOMES.UNREACHABLE) {
+    let up = null;
+    try {
+      const probe = await fetch(SERVICE_BASE + '/readiness', { method: 'GET' });
+      const body = await probe.json().catch(() => null);
+      up = probe.status === 200 && body && body.status === 'UP';
+    } catch { up = false; }
+    sentence += up
+      ? ' Its readiness endpoint answers UP, so the service is running: this is a fault in this client, not an outage.'
+      : ' Its readiness endpoint does not answer UP either, so the service itself is not ready.';
+  }
+  sentence += ' No game was dealt.';
+  st.textContent = sentence;
+  $('directive').textContent = '';
+  $('opp').textContent = '';
+  $('deck').textContent = '';
+  $('pile').textContent = '';
+  $('hand').textContent = '';
+  $('controls').textContent = '';
+  $('btn-new').disabled = true;
+  $('live').textContent = sentence;
+}
+
+/*
+ * A link this client cannot serve.
+ *
+ * Everything that could start a game is taken away rather than left inert: the table is
+ * emptied, the hand and the pile are cleared, and both header controls are disabled.
+ * Nothing here deals, and nothing here is a fallback to some other game — the refusal
+ * names what was asked for and what this client does serve, and that is the whole answer.
+ *
+ * A REFUSAL IS NOT A MODE, and this is where that used to be wrong: the flag that marks
+ * "nothing may be pressed" was the same flag that means "offline practice", so this
+ * function painted the full red OFFLINE PRACTICE banner. A guest who scanned a link this
+ * client could not serve was told they were in a practice game. There are two flags now,
+ * and the banner has exactly one owner: startOffline().
+ */
+function refuseIdentity(plan) {
+  stopWaiting();
+  identity = plan;
+  host = null;
+  authority = null;
+  view = null;
+  offline = false;
+  blocked = true;
+  waiting = null;
+  const st = $('status');
+  st.className = 'status bad';
+  st.textContent = plan.note;
+  $('surface').textContent = plan.title;
+  $('mode').textContent = 'nothing opened';
+  $('directive').textContent = plan.detail;
+  $('opp').textContent = '';
+  $('deck').textContent = '';
+  $('pile').textContent = '';
+  $('hand').textContent = '';
+  $('controls').textContent = '';
+  $('wait').hidden = true;
+  const banner = $('banner');
+  // The refusal gets its own surface rather than the practice banner: the same space, the
+  // same prominence, and a sentence that describes a refusal. It carries the word NOTICE
+  // rather than PRACTICE so the two can never be read as each other.
+  banner.hidden = false;
+  banner.className = 'banner banner-refused';
+  banner.textContent = 'NOTICE — this link cannot be opened on this phone. ' + plan.note
+    + ' Nothing was dealt and no table was opened.';
+  $('btn-new').disabled = true;
+  $('btn-new').textContent = 'New table';
+  $('btn-offline').disabled = true;
+  $('btn-offline').textContent = 'Practise offline';
+  $('live').textContent = plan.title + '. ' + plan.note;
+}
+
+/* -------------------------------------------------------------------- the waiting table */
+
+/** One repaint of the waiting surface, from the service's answer and the clock. */
+function paintWait(plan) {
+  const v = plan.view;
+  waiting = { pending: !v.started, code: plan.code, plan };
+  $('surface').textContent = identity.title;
+  $('mode').textContent = v.started
+    ? 'the table service · table ' + plan.code
+    : 'the table service · waiting for table ' + plan.code;
+
+  const box = $('wait');
+  const st = $('status');
+  const dir = $('directive');
+
+  if (v.started) {
+    box.hidden = true;
+  } else {
+    box.hidden = false;
+    $('waitclock').textContent = v.countdown === null ? '—' : v.countdown;
+    $('waitlabel').textContent = v.sentence;
+    $('waitcode').textContent = v.detail || '';
+    const row = $('waitseats');
+    row.textContent = '';
+    const lobby = plan.lobby;
+    if (lobby) {
+      for (const seat of lobby.seats) {
+        const el = document.createElement('span');
+        const open = seat.state === 'OPEN';
+        el.className = 'seat' + (open ? ' open' : '');
+        el.textContent = (seat.displayName || ('Seat ' + seat.seatNo)) + (open ? ' — open' : ' — taken');
+        row.appendChild(el);
+      }
+    }
+  }
+
+  st.className = v.waitingFor === 'deadline-passed' ? 'status alert' : 'status';
+  st.textContent = v.seatsOpen === 0 && !v.started
+    ? 'The table is full: ' + v.seatsTaken + ' of ' + v.seatsTotal + ' seats taken.'
+    : v.seatsOpen + ' of ' + v.seatsTotal + ' seats are still open.';
+  dir.textContent = v.started ? 'the cards have been dealt' : (v.detail || '');
+  $('opp').textContent = '';
+  $('deck').textContent = '';
+  $('pile').textContent = '';
+  $('hand').textContent = '';
+  $('controls').textContent = '';
+  $('btn-new').disabled = false;
+  $('btn-new').textContent = 'New table';
+  $('btn-offline').disabled = false;
+  $('btn-offline').textContent = 'Practise offline';
+  $('live').textContent = v.sentence + '. ' + st.textContent;
+}
+
+function stopWaiting() {
+  if (waitTimer !== null) { clearInterval(waitTimer); waitTimer = null; }
+}
+
+/**
+ * Resolve the table the scan named, and wait on it.
+ *
+ * THE ORDER IS THE POINT: the code is resolved PUBLICLY first, before an account exists, so
+ * a code that names no table costs a guest nothing. Only then is a seat claimed, and only the
+ * service's own state decides when the wait is over.
+ *
+ * THE COUNTDOWN IS NOT A TIMER. Every tick recomputes it from the service's `waitDeadline`,
+ * which is why this repaints from the last answer while a fresh one is in flight — a slow
+ * poll cannot make the number wrong, and the phone and the venue display are doing the same
+ * arithmetic on the same field.
+ */
+async function startWaiting() {
+  stopWaiting();
+  offline = false; blocked = false; table = null; host = null; authority = null; view = null;
+  $('btn-new').disabled = true;
+
+  const joined = await joinSharedTable(fetch.bind(globalThis), SERVICE_BASE, store, scannedCode, SERVED[identity.game]);
+  if (joined.outcome === OUTCOMES.CODE_UNKNOWN) {
+    // NOT practice, and not an outage: the link named a table and the service does not know
+    // it. The refusal goes through the identity path so there is exactly one way a screen
+    // ends up refused.
+    return refuseIdentity({
+      ...identity,
+      ok: false,
+      title: 'No such table',
+      note: 'This link names table ' + scannedCode + ', and the table service does not know that code: '
+        + (joined.error || 'unknown or expired') + '. A code is only good while its table is waiting.',
+      detail: 'code ' + scannedCode + ' was refused by the service',
+    });
+  }
+  if (joined.outcome !== OUTCOMES.TABLE_WAITING && joined.outcome !== OUTCOMES.TABLE_STARTED_UNPLAYABLE) {
+    return failVenue(joined);
+  }
+
+  let last = joined.lobby;
+  const draw = () => paintWait(waitPlan(scannedCode, last, SERVED, Date.now()));
+  draw();
+  paintMode();
+
+  const poll = async () => {
+    const again = await joinSharedTable(fetch.bind(globalThis), SERVICE_BASE, store, scannedCode, SERVED[identity.game]);
+    if (again.lobby) last = again.lobby;
+    draw();
+    if (again.outcome === OUTCOMES.TABLE_STARTED_UNPLAYABLE || (last && last.state === 'LIVE')) {
+      stopWaiting();
+      await onTableStarted(again);
+    }
+  };
+  waitTimer = setInterval(() => {
+    draw();                       // repaint the clock from the last known deadline
+    poll().catch(() => {});       // and refresh the state, without letting a failure stop the clock
+  }, POLL_MS);
+
+  if (last && last.state === 'LIVE') { stopWaiting(); await onTableStarted(joined); }
+  return null;
+}
+
+/**
+ * The table has started. This is where the cards are dealt — and where the one gap this
+ * client cannot close is stated rather than hidden.
+ *
+ * `joined.play` is the descriptor a started table would have to publish for this client to
+ * address it on the path that advances machine seats: a numeric game id AND the seat list
+ * that id is played with. A started lobby publishes a runtime SESSION id instead, where the
+ * seat this client does not hold refuses every account and where no command makes a machine
+ * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.2a075b2c.mjs. So a started table with no
+ * descriptor is reported as what it is, with the reason, and NOTHING is dealt.
+ */
+async function onTableStarted(joined) {
+  const play = joined && joined.play;
+  paintMode();
+  if (play) {
+    // The service published the seats this table is played with. Until it does, this branch
+    // is unreachable, and it is kept rather than deleted so the moment the gap closes the
+    // play path is this one call and not a rewrite.
+    const game = SERVED[identity.game];
+    offline = false; blocked = false; waiting = null;
+    table = { tableId: play.tableId, accountId: joined.accountId, machineId: play.machineId, seats: play.seats };
+    mySeat = table.accountId;
+    authority = new NetworkAuthority(SERVICE_BASE, { token: joined.session.token, table });
+    host = new GameHost(authority, { localSeat: mySeat });
+    paintMode();
+    await host.start();
+    await refresh();
+    return null;
+  }
+  const st = $('status');
+  st.className = 'status bad';
+  st.textContent = 'The table has started, and this client cannot play it: ' + (joined && joined.error ? joined.error : PLAY_DESCRIPTOR_GAP);
+  $('directive').textContent = 'table ' + scannedCode + ' is live at the service';
+  $('btn-new').disabled = false;
+  $('live').textContent = st.textContent;
+  return null;
+}
+
+async function refresh(note, alert) {
+  if (!host) { render(note, alert); return; }
+  view = await host.view();
+  render(note, alert);
+}
+
+async function act(action, args) {
+  if (busy || !host) return;
+  busy = true;
+  const r = await host.act(action, args);
+  busy = false;
+  if (!r.ok) { await refresh(r.error || 'That move was refused.', true); return; }
+  await refresh();
+}
+
+function cardEl(card, state) {
+  const suit = SUITS[card.family] || SUITS.Spade;
+  const d = document.createElement('div');
+  const playable = state === 'playable', wild = state === 'wild';
+  /*
+   * `attempt` is the state a card is in when the authority has NOT said whether it may be
+   * played. The table service publishes no legal-card list, so on the venue path the client
+   * cannot mark a card legal or illegal without inventing a rule — so it marks it as a
+   * REQUEST, and the engine's own answer is what the guest is shown. Marking these `dim`
+   * would be the same lie in the other direction: it would claim the card is not playable.
+   */
+  const attempt = state === 'attempt';
+  d.className = 'card ' + (suit.red ? 'red' : 'black') + (card.symbol === 'Joker' ? ' joker' : '') +
+    (playable ? ' playable' : wild ? ' wild' : attempt ? ' attempt' : ' dim');
+  const special = SPECIALS[card.symbol];
+  d.setAttribute('role', 'button');
+  d.setAttribute('tabindex', (playable || wild || attempt) ? '0' : '-1');
+  d.setAttribute('aria-label', card.cardName.replace(/_/g, ' ') + (special ? ' — ' + special : '') +
+    (wild ? ' (needs a family named)' : '') + (attempt ? ' — ask the table service to play this' : ''));
+  d.innerHTML = '<div class="rank">' + card.symbol + '</div><div class="glyph">' + suit.glyph +
+    '</div><div class="family">' + card.family + '</div><div class="name">' +
+    card.cardName.replace(/_/g, ' ') + '</div>';
+  if (playable || attempt) d.addEventListener('click', () => act('play', { cardName: card.cardName }));
+  if (wild) d.addEventListener('click', () => showFamilyPicker(card.cardName));
+  d.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (playable || attempt) act('play', { cardName: card.cardName });
+    if (wild) showFamilyPicker(card.cardName);
+  });
+  return d;
+}
+
+function showFamilyPicker(cardName) {
+  const ctl = $('controls'); ctl.innerHTML = '';
+  const label = document.createElement('div');
+  label.className = 'winner'; label.style.fontSize = '15px';
+  label.textContent = 'Name a family for your ' + (cardName.includes('Joker') ? 'Joker' : 'Jack');
+  ctl.appendChild(label);
+  const row = document.createElement('div'); row.className = 'families';
+  for (const f of LocalAuthority.JACK_CALLS) {
+    const b = document.createElement('button');
+    b.className = 'act'; b.textContent = f;
+    b.addEventListener('click', () => act('play', { cardName, requestedFamily: f }));
+    row.appendChild(b);
+  }
+  ctl.appendChild(row);
+  const cancel = document.createElement('button');
+  cancel.className = 'act ghost'; cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', () => render());
+  ctl.appendChild(cancel);
+}
+
+function render(note, bad) {
+  const v = view;
+  if (!v) return;
+  $('wait').hidden = true;
+  // The opponent's seat is an account id on the venue path and the engine's own label
+  // offline; `mySeat` is whichever this screen is holding, so the two are never mixed up.
+  const opponentSeat = offline ? OFFLINE_MACHINE : (table ? table.machineId : null);
+  $('opp').textContent = 'Machine — ' + (v.counts && opponentSeat !== null ? (v.counts[String(opponentSeat)] ?? '?') : '?') + ' cards';
+  $('deck').textContent = 'Deck — ' + (v.drawCount ?? '?');
+
+  const st = $('status');
+  if (v.over) { st.className = 'status'; st.textContent = ''; }
+  else if (bad && note) { st.className = 'status bad'; st.textContent = note; }
+  else if (note) { st.className = 'status alert'; st.textContent = note; }
+  else if (v.mustAnnounce) { st.className = 'status alert'; st.textContent = 'One card left — announce it before you play.'; }
+  else if (v.choosingFamily) { st.className = 'status alert'; st.textContent = 'Your Jack names what comes next.'; }
+  else if (v.blocked) { st.className = 'status alert'; st.textContent = 'Blocked. Answer with the same card or pass.'; }
+  else if (v.penalty > 0) { st.className = 'status alert'; st.textContent = 'You owe a penalty of ' + v.penalty + '. Draw, or add to it.'; }
+  else if (v.turnHasPlayed) { st.className = 'status'; st.textContent = 'You have played. Play another of the same value, or finish your turn.'; }
+  else if (v.isTurn) { st.className = 'status'; st.textContent = 'Your turn.'; }
+  else { st.className = 'status'; st.textContent = 'Waiting for the machine⬦'; }
+
+  const dir = [];
+  if (v.requestedFamily && v.requestedFamily !== 'CHOICE') dir.push('Requested: ' + v.requestedFamily);
+  if (v.direction === -1) dir.push('Direction reversed');
+  // Honest about what this authority told us: a client that cannot see the legal list says
+  // so rather than colouring the cards as though it knew.
+  if (v.legalReported === false && !v.over) dir.push('the service does not list legal cards, so a card is a request — it will answer');
+  $('directive').textContent = dir.join('  ·  ');
+
+  const pile = $('pile'); pile.innerHTML = '';
+  if (v.topCard) pile.appendChild(cardEl(v.topCard, 'top'));
+
+  const hand = $('hand'); hand.innerHTML = '';
+  const playableSet = new Set(v.legalCards || []);
+  const wildSet = new Set(v.wildCards || []);
+  for (const name of v.hand) {
+    const parts = name.startsWith('Joker') ? { family: 'Joker', symbol: 'Joker' }
+      : { family: name.split('_')[0], symbol: name.split('_')[1] };
+    const state = v.over ? 'top'
+      : playableSet.has(name) ? 'playable'
+        : wildSet.has(name) ? 'wild'
+          : v.legalReported === false ? 'attempt'
+            : 'dim';
+    hand.appendChild(cardEl({ cardName: name, family: parts.family, symbol: parts.symbol }, state));
+  }
+
+  const ctl = $('controls'); ctl.innerHTML = '';
+  const btn = (label, fn, ghost, enabled = true) => {
+    const b = document.createElement('button');
+    b.className = 'act' + (ghost ? ' ghost' : '');
+    b.textContent = label; b.disabled = !enabled;
+    if (enabled && fn) b.addEventListener('click', fn);
+    ctl.appendChild(b);
+    return b;
+  };
+
+  if (v.over) {
+    const msg = document.createElement('div');
+    msg.className = 'winner';
+    msg.textContent = v.winnerId === mySeat ? 'You win — Kadi moja!' : 'The machine won this hand.';
+    ctl.appendChild(msg);
+    btn(offline ? 'Deal again' : 'New table', newRound);
+    return;
+  }
+  if (!v.isTurn) { btn('Machine is thinking⬦', null, true, false); return; }
+  if (v.mustAnnounce) { btn('Announce last card', () => act('announceLastCard')); return; }
+  if (v.choosingFamily) { showFamilyPicker(''); return; }
+  if (v.legalReported === false) {
+    // The authority reports no action flags either, so every action is offered as the
+    // request it is; the service refuses what is not available and the refusal is shown.
+    btn('Draw a card', () => act('draw'), v.turnHasPlayed);
+    btn('Finish turn', () => act('finish'), !v.turnHasPlayed);
+    btn('Pass', () => act('pass'));
+    return;
+  }
+  if (v.canFinish) btn('Finish turn', () => act('finish'), !v.legalCards.length);
+  if (v.canDraw) btn('Draw a card', () => act('draw'), v.legalCards.length > 0 || v.wildCards.length > 0);
+  if (v.canPass) btn('Pass', () => act('pass'));
+}
+
+/**
+ * A new round. On the venue path that is a NEW TABLE — "each gets his own game" — and
+ * offline it is a fresh deal on this phone. Neither is ever reached by a failure.
+ *
+ * A scan that named a table goes back to THAT table: pressing "New table" on a shared table
+ * must not silently open a private one, which is the whole distinction `code` exists for.
+ */
+async function newRound() {
+  if (busy) return;
+  busy = true;
+  $('status').className = 'status';
+  $('status').textContent = offline ? 'Dealing⬦'
+    : scannedCode && identity.ok ? 'Back to the table on this link⬦' : 'Opening a table at the service⬦';
+  try {
+    if (offline) { await startOffline(); }
+    else if (identity.ok && scannedCode) { await startWaiting(); }
+    else if (identity.ok) { await startVenue(); }
+    else { refuseIdentity(identity); }
+    if (host) await refresh();
+    else if (!waiting) render();
+  } catch (e) {
+    await failVenue({ outcome: OUTCOMES.SEAT_REFUSED, error: (e && e.message) || 'unknown' });
+  }
+  busy = false;
+}
+
+$('btn-new').addEventListener('click', newRound);
+
+/*
+ * The offline control. It is a MODE, not a fallback: it is present before anything has
+ * failed, it says what it does, and pressing it repaints the whole screen as offline
+ * BEFORE a single card is dealt. It is disabled while a link has been refused, because a
+ * refusal is not an invitation to play something else.
+ */
+$('btn-offline').addEventListener('click', async () => {
+  if (!identity.ok || blocked || offline || busy) return;
+  busy = true;
+  await startOffline();
+  await refresh();
+  busy = false;
+});
+
+try {
+  if (!identity.ok) {
+    refuseIdentity(identity);
+  } else {
+    $('surface').textContent = identity.title;
+    if (!Ctor) throw new Error('the canonical Kadi runtime did not load');
+    // The loaded engine gets a vote on the version it will play, before the venue is
+    // contacted. It is a fact about the bytes this page serves, so it is checked here.
+    const probe = new Ctor(identity.engineGameId, String(Date.now()), OFFLINE_HUMAN, OFFLINE_MACHINE);
+    const afterEngine = planForRuntime(identity, JSON.parse(probe.identityJson()));
+    if (!afterEngine.ok) refuseIdentity(afterEngine);
+    else if (scannedCode) {
+      // THE SCAN NAMED A TABLE. Resolve it publicly, take a seat, and wait on the service's
+      // own deadline — the countdown the Founder asked for, on the screen the scan opened.
+      $('status').className = 'status';
+      $('status').textContent = 'Resolving table ' + scannedCode + ' at the service⬦';
+      await startWaiting();
+    } else {
+      $('status').className = 'status';
+      $('status').textContent = 'Opening your table at the service⬦';
+      await startVenue();
+      if (host) await refresh();
+      else render();
+    }
+  }
+} catch (e) {
+  await failVenue({ outcome: OUTCOMES.SEAT_REFUSED, error: (e && e.message) || 'unknown' });
+}
+</script>
+</body>
+</html>
