@@ -145,8 +145,33 @@ main{display:grid;grid-template-columns:min(34vw,30rem) minmax(0,1fr);grid-templ
  */
 .details{grid-area:details;grid-row:2;display:flex;flex-direction:column;gap:.9rem;height:100%;
   max-height:100%;min-height:0;min-width:0;overflow:hidden;overscroll-behavior:contain}
+/*
+ * *** THE COLUMN CLIPS, AND EACH CHILD THAT CAN RUN LONG SCROLLS INSIDE IT. ***
+ *
+ * That division is the one this file already chose, and it is right: `overflow:hidden` here is what
+ * STOPS a tall child from growing the grid row and squeezing the join symbol.
+ *
+ * *** I TRIED MOVING THE SCROLL ONTO THE COLUMN AND MEASURED IT BACK OUT. *** With
+ * `overflow-y:auto` here, at 1366x620 the join QR went from *** 170x170 to 113x113 — a third of
+ * the symbol, gone *** — which is precisely the squeeze this cap exists to prevent. The rule is
+ * reverted rather than argued with, and the measurement is in `tests/tv-layout.test.mjs`.
+ *
+ * *** BUT ONLY ONE CHILD WAS HONOURING THE DELEGATION. *** `.lobby` scrolled; the OTHER long
+ * child — the board carrying the headline, the blurb and the stat cards — had no scroll of its
+ * own and was simply CLIPPED. Measured at 1366x620: the column had 485px, the board needed 531px,
+ * the blurb was cut MID-SENTENCE at "Joining requires an account", and ALL THREE stat cards were
+ * gone from the screen. *** THE CAP WAS DOING ITS JOB; THE DELEGATION WAS INCOMPLETE. ***
+ */
 .details > *{flex:0 0 auto;min-height:0}
-/* The one child that holds table facts scrolls inside the capped column. */
+/*
+ * `flex:0 1 auto` and NOT `flex:0 0 auto`. The board has to be allowed to SHRINK for a scroll to
+ * have anything to scroll: with `0 0 auto` it keeps its content height, overflows the capped
+ * column and is clipped, which IS the defect. `min-height:0` is what lets a flex item go below its
+ * content size at all — without it the item's automatic minimum wins and the scroll never engages.
+ */
+.details > .board{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.details > .board::-webkit-scrollbar{width:0;height:0}
+/* The child that holds table facts scrolls inside the capped column. */
 .lobby{max-height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
 .lobby::-webkit-scrollbar{width:0;height:0}
 /*
@@ -282,6 +307,87 @@ footer .dot.down{background:#8C5A4A}
   .lobby__funds{grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr))}
 }
 
+/*
+ * ---- SHORT PANELS: MAKE THE DETAIL COLUMN FIT RATHER THAN SCROLL ---------------
+ *
+ * The block above compacts the JOIN column, because every pixel spent on its two lines of
+ * text is a pixel taken off the symbol. This compacts the DETAIL column for the mirror
+ * reason: *** A WALL CANNOT BE SCROLLED BY THE PLAYER STANDING IN FRONT OF IT, *** so the
+ * fewest pixels that still say everything is the target, and the scroll added at
+ * `.details` is the fallback rather than the plan.
+ *
+ * MEASURED BEFORE THESE RULES, at 1366x620 — a 1366x768 laptop once browser chrome has
+ * taken its share: the detail column NEEDED 531px and HAD 485px, so the blurb was cut
+ * mid-sentence at "Joining requires an account" and ALL THREE stat cards were gone from the
+ * screen. After them the column fits and nothing is dropped.
+ *
+ * *** THE BLURB IS NEVER CLAMPED OR HIDDEN — IT IS MADE TO FIT. *** My first attempt at this
+ * clamped it to four lines and two lines, and at 1366x768 the clamp cut the sentence
+ * "Joining requires an account." *** THAT IS THE EXACT LOSS THIS CHANGE EXISTS TO STOP, so
+ * clamping was the wrong instrument and is not used. *** The paragraph states what this screen
+ * is and what it does NOT do — that nothing here opens a table, that no money is taken, and
+ * that joining requires an account. Those are promises about money and identity, not
+ * decoration, and a promise that is truncated is a promise that was not made. So the rules
+ * below shrink type and spacing instead, and if a panel is ever short enough that even that is
+ * not enough, `.details` scrolls rather than dropping a word.
+ */
+@media (max-height:820px){
+  .board h1{font-size:1.5rem}
+  .board p{font-size:.95rem;line-height:1.3}
+  .slot{padding:.6rem .75rem}
+  .slot .v{font-size:1.2rem}
+  .slots{gap:.55rem}
+}
+
+/*
+ * ---- A WIDE-BUT-SHORT PANEL: GIVE THE SYMBOL A FLOOR TOO ----------------------
+ *
+ * *** THIS IS THE FIX FOR A SYMBOL THAT CHANGED SIZE ON RELOAD. ***
+ *
+ * A laptop window is wide and short — 1366x620 is aspect 2.20 — so it NEVER reaches the 16/10
+ * stacking breakpoint above. It keeps two columns on `auto minmax(0,1fr)`, where the join row has
+ * NO FLOOR, so the symbol's share of the height is whatever the DETAILS column's content asked for
+ * on that particular load.
+ *
+ * MEASURED, AND THIS IS THE WHOLE ARGUMENT: the SAME page at 1366x620 gave a join QR of *** 170px,
+ * then 113px, then 234px ON THREE IDENTICAL LOADS *** with nothing changed between them — because
+ * the details column's height depends on when `/portfolio` and the lobby read land. A venue symbol
+ * that is 113px on one reload and 234px on the next is a symbol a phone sometimes cannot scan, and
+ * `MIN_SCANNABLE_QR_PX` in this file is 240.
+ *
+ * So the floor the square panels already get is extended here. The label, the URL and the gaps take
+ * about 60px of the column, so 19rem leaves the symbol roughly its scannable minimum. *** THE PICKER
+ * IS COMPACTED TO PAY FOR IT, because at this height something must give, and a fixture list is the
+ * right thing to give. *** The pairing symbol is drawn smaller here for the same reason.
+ */
+@media (max-height:820px) and (min-aspect-ratio:16/10){
+  main{grid-template-rows:auto minmax(19rem,1fr)}
+  .picker{padding:.4rem .55rem}
+  .picker__label{margin-bottom:.25rem}
+  .picker__games{gap:.3rem}
+  .picker__game{padding:.3rem .55rem;font-size:.82rem;min-width:5.5rem}
+  .picker__game small{font-size:.64rem;margin-top:.1rem}
+  .picker__note{font-size:.76rem;margin-top:.25rem}
+  .resume{gap:.35rem;margin-top:.45rem;padding-top:.4rem}
+  .resume__button{padding:.35rem .65rem;font-size:.88rem}
+  .resume__note{font-size:.76rem}
+  .pair{padding:.3rem .5rem;gap:.5rem;margin-bottom:.45rem}
+  .pair__word{font-size:.7rem}
+  .pair__code{font-size:1.5rem}
+  .pair__say{font-size:.78rem}
+  .pair__qr{width:4.5rem;height:4.5rem}
+}
+@media (max-height:660px){
+  .details{gap:.55rem}
+  .board{gap:.4rem}
+  .board h1{font-size:1.25rem}
+  .board p{font-size:.85rem;line-height:1.25}
+  .slot{padding:.45rem .6rem}
+  .slot .k{font-size:.72rem}
+  .slot .v{font-size:1rem}
+  .slots{grid-template-columns:repeat(auto-fill,minmax(8rem,1fr));gap:.45rem;margin-top:0}
+}
+
 /* ---- game picker ----
    Sized for a screen read from across a room: no control smaller than a thumb, and
    every state distinguishable by more than colour alone. */
@@ -305,8 +411,18 @@ footer .dot.down{background:#8C5A4A}
 .resume__button{font:inherit;font-size:1rem;border:1px solid var(--gold);background:#1C2A1F;color:var(--gold-hi);border-radius:.6rem;padding:.55rem 1rem;cursor:pointer}
 .resume__note{margin:0;font-size:.88rem;color:var(--dim);flex-basis:100%}
 .resume__note.warn{color:#C9A66B}
-.pair{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;border:1px solid var(--line);border-radius:.6rem;padding:.45rem .7rem;margin-bottom:.7rem;background:#0B1410}
+.pair{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;border:1px solid var(--line);border-radius:.6rem;padding:.45rem .7rem;margin-bottom:.7rem;background:#0B1410}
 .pair[hidden]{display:none}
+/*
+ * The pairing symbol is a FIXED box, not a flexible one. A QR that shrinks with the panel stops
+ * being scannable exactly when the panel is small — which is when the owner is most likely to be
+ * standing at it with a phone. `image-rendering:pixelated` keeps the module edges hard when the
+ * canvas is scaled, because a blurred QR is one the camera has to guess at.
+ */
+.pair__qr{flex:0 0 auto;width:6rem;height:6rem;background:#F2E9D6;border-radius:.4rem;padding:.25rem;box-sizing:border-box}
+.pair__qr[hidden]{display:none}
+.pair__qr canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+.pair__text{display:flex;flex-direction:column;gap:.1rem;min-width:0}
 .pair__word{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
 .pair__word[data-state="warn"]{color:#C9A66B}
 .pair__code{font-size:2.2rem;font-weight:800;letter-spacing:.12em;color:var(--gold-hi);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
@@ -404,9 +520,24 @@ footer .dot.down{background:#8C5A4A}
   <main>
     <div class="picker">
       <div class="pair" id="pairBox" hidden>
-        <span class="pair__word" id="pairWord" data-state="ok">Not paired</span>
-        <span class="pair__code" id="pairCode"></span>
-        <span class="pair__say" id="pairSay"></span>
+        <!--
+          *** THE PAIRING CODE CAN BE SCANNED, NOT ONLY TYPED. ***
+          The owner standing at this screen is holding a phone. Reading an 8-character code off a
+          wall and thumbing it in is the step most likely to go wrong in a room, and it is the step
+          a camera removes. The symbol encodes the SAME `?code=` address the service itself builds
+          for its verification link, so scanning and typing arrive at exactly the same page in
+          exactly the same state — the QR is a second way to say one thing, never a second thing.
+          It is drawn from `qr.mjs`, the same encoder the join symbol uses: one implementation, so
+          a fix to the encoder fixes both symbols rather than one of them.
+        -->
+        <div class="pair__qr" id="pairQrWrap" hidden>
+          <canvas id="pairQr" width="1" height="1" role="img" aria-label="Scan to pair this screen"></canvas>
+        </div>
+        <div class="pair__text">
+          <span class="pair__word" id="pairWord" data-state="ok">Not paired</span>
+          <span class="pair__code" id="pairCode"></span>
+          <span class="pair__say" id="pairSay"></span>
+        </div>
       </div>
       <!--
         THIS IS A DISPLAY, NOT A CHOOSER. The list below names the games the table service
@@ -631,6 +762,17 @@ function deviceStorage() {
 let pair = initialPairState(deviceStorage());
 let pairBusy = false;
 
+/*
+ * *** THE PAIRING SYMBOL IS DRAWN FROM THE SAME CODE THE TEXT PRINTS. ***
+ *
+ * The address is the one the SERVICE builds for its own verification link — `?code=` on the pair
+ * page — and not a second spelling invented here. `readCode()` in `pair/pair.mjs` reads `?code=`
+ * first and a `#code=` fragment second, so both forms work; `?code=` is used because it is the
+ * documented contract. Nothing is encoded that the screen does not also print, and nothing is
+ * printed that is not encoded: the two are the same fact in two forms.
+ */
+const PAIR_LINK_BASE = 'https://lastikadi.com/pair/?code=';
+
 function paintPairing() {
   const plan = pairPlan(pair, Date.now());
   $('pairBox').hidden = !plan.shows;
@@ -638,6 +780,22 @@ function paintPairing() {
   $('pairWord').dataset.state = plan.warn ? 'warn' : 'ok';
   $('pairCode').textContent = plan.userCode || '';
   $('pairCode').hidden = !plan.userCode;
+  /*
+   * THE SYMBOL FOLLOWS THE CODE, INCLUDING WHEN THE CODE GOES AWAY. A QR left on the glass from a
+   * previous code would send a phone to a page that can approve nothing — the owner would scan,
+   * see a refusal, and conclude the screen is broken rather than that the code expired. So the
+   * canvas is reset to 1x1 and the wrapper hidden whenever there is no live code.
+   */
+  const qrWrap = $('pairQrWrap');
+  if (plan.userCode) {
+    drawQr($('pairQr'), PAIR_LINK_BASE + plan.userCode);
+    qrWrap.hidden = false;
+  } else {
+    const canvas = $('pairQr');
+    canvas.width = 1;
+    canvas.height = 1;
+    qrWrap.hidden = true;
+  }
   $('pairSay').textContent = plan.say;
   $('pairTag').textContent = plan.paired ? 'paired' + (plan.username ? ' as ' + plan.username : '') : '';
   return plan;
