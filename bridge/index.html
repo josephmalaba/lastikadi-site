@@ -49,6 +49,40 @@ th{color:var(--dim);font-weight:500}
 .lim{color:#C9A66B}
 .note{color:var(--dim);font-size:14px;margin:10px 0 0}
 footer{margin-top:20px;color:var(--dim);font-size:13px;text-align:center;max-width:680px}
+/* The shared "continue in the app" note. tests/app-prompt.test.mjs compares this
+   block against STYLE in assets/js/app-prompt.js. It is written here rather than
+   injected because _headers serves `style-src 'self'` with no 'unsafe-inline'. */
+[hidden]{display:none}
+.appnote{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--panel2,#263D31);color:var(--cream,#F2E9D6);border-bottom:1px solid var(--line,#3A5346)}
+.appnote[hidden]{display:none}
+.appnote__text{margin:0;flex:1 1 22rem;min-width:0;font-size:14px;line-height:1.45}
+.appnote__label{display:block;color:var(--gold,#D9A93C);font-weight:650}
+.appnote__body{display:block;color:var(--dim,#9FB3A6)}
+.appnote__actions{display:flex;gap:8px;align-items:center}
+.appnote__store{border:1px solid var(--line,#3A5346);border-radius:999px;padding:8px 14px;color:var(--cream,#F2E9D6);text-decoration:none;min-height:var(--tap,2.75rem);display:inline-flex;align-items:center}
+.appnote__dismiss{font:inherit;border:1px solid var(--line,#3A5346);background:transparent;color:var(--cream,#F2E9D6);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:var(--tap,2.75rem)}
+.appnote__dismiss:hover{border-color:var(--gold,#D9A93C)}
+.feedback{border-bottom:1px solid var(--line,#3A5346);background:var(--panel,#1F332A);color:var(--cream,#F2E9D6)}
+.feedback[hidden]{display:none}
+.feedback__summary{cursor:pointer;list-style:none;padding:10px 14px;font-weight:650;min-height:var(--tap,2.75rem);display:flex;align-items:center;gap:8px}
+.feedback__summary::-webkit-details-marker{display:none}
+.feedback__summary::after{content:"+";margin-left:auto;color:var(--gold,#D9A93C)}
+.feedback[open] .feedback__summary::after{content:"\2212"}
+.feedback__body{padding:0 14px 14px;max-width:60ch}
+.feedback__blurb{margin:0 0 10px;color:var(--dim,#9FB3A6);font-size:14px;line-height:1.5}
+.feedback__row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+.feedback__row label{font-size:13px;color:var(--dim,#9FB3A6)}
+.feedback select,.feedback textarea,.feedback input[type=text]{font:inherit;color:var(--cream,#F2E9D6);background:#0B1410;border:1px solid var(--line,#3A5346);border-radius:8px;padding:8px 10px;max-width:100%}
+.feedback textarea{width:100%;min-height:6rem;resize:vertical}
+.feedback__consent{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--dim,#9FB3A6)}
+.feedback__actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.feedback__send{font:inherit;border:1px solid var(--gold,#D9A93C);background:var(--gold,#D9A93C);color:#20170A;border-radius:8px;padding:10px 16px;font-weight:650;cursor:pointer;min-height:var(--tap,2.75rem)}
+.feedback__send[disabled]{opacity:.45;cursor:not-allowed}
+.feedback__status{margin:0;font-size:14px;min-height:1.4em}
+.feedback__status.ok{color:var(--ok,#5AA469)}
+.feedback__status.bad{color:var(--danger,#C4553F)}
+.feedback__status.wait{color:var(--gold,#D9A93C)}
+.feedback__note{margin:8px 0 0;font-size:13px;color:var(--dim,#9FB3A6)}
 </style>
 </head>
 <body>
@@ -59,6 +93,22 @@ footer{margin-top:20px;color:var(--dim);font-size:13px;text-align:center;max-wid
   <span class="spacer"></span>
   <span class="pill" id="engine">engine —</span>
 </header>
+
+<!-- Inserted before this element by /assets/js/app-prompt.a65030b6.js. No store URL is
+     configured, because nothing has been released: the module renders no download
+     control at all until one exists. The element is hidden so the JSON is never
+     shown during parse. -->
+<div id="appNoteConfig" hidden data-app-note-anchor="appNoteConfig"
+     data-app-note='{"gameId":"bridge","label":"Continue in the LastiKadi app","release":null}'></div>
+<script src="/assets/js/app-prompt.a65030b6.js" defer></script>
+
+<!-- Durable feedback: POST /feedback on the game API. The client is not signed in,
+     and the endpoint is authenticated, so the control says so rather than posting a
+     request that is certain to be refused. It stays collapsed until opened, so it
+     cannot cover the table. -->
+<div id="feedbackConfig" hidden data-feedback-anchor="feedbackConfig"
+     data-feedback='{"gameId":"bridge"}'></div>
+<script src="/assets/js/feedback-client.aca29017.js" defer></script>
 
 <main>
   <div class="status">
@@ -96,8 +146,8 @@ footer{margin-top:20px;color:var(--dim);font-size:13px;text-align:center;max-wid
 vendored unchanged from the repository that owns them.</footer>
 
 <script type="module">
-import { GameHost } from '../play/host.0810b83e.mjs';
-import { BridgeAuthority } from './authority.9aad437e.mjs';
+import { GameHost } from '../play/host.e30228b1.mjs';
+import { BridgeAuthority } from './authority.8c1bcd91.mjs';
 import { SEATS, PASS, DOUBLE, REDOUBLE } from './rules.35ca8d07.mjs';
 
 const SUIT_GLYPH = { C: '♣', D: '♦', H: '♥', S: '♠', NT: 'NT' };

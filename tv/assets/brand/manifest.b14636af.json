@@ -1,0 +1,121 @@
+{
+  "source": "lastikadi2026.png",
+  "source_size": [
+    1254,
+    1254
+  ],
+  "assets": [
+    {
+      "file": "lastikadi-logo.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "sha256": "07269c7140a126a09052e70ab30807590e3a9840ba5d737dec1ef3f7a9ac21d8"
+    },
+    {
+      "file": "lastikadi-logo-1024.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "sha256": "7bb13f8e222bde3027862d4e99b078e75ebcc9065ec5758296827da6d41f115d"
+    },
+    {
+      "file": "lastikadi-logo-512.png",
+      "size": [
+        512,
+        512
+      ],
+      "sha256": "0f96278cdfce4f1b97676819153904e2f54cb514f2557d32638aa53f2b1258fc"
+    },
+    {
+      "file": "lastikadi-logo-256.png",
+      "size": [
+        256,
+        256
+      ],
+      "sha256": "fa23c20923b1f2f99504ed0a9b60cca1d304e9155f527978b8371e2146be1fd2"
+    },
+    {
+      "file": "lastikadi-logo-192.png",
+      "size": [
+        192,
+        192
+      ],
+      "sha256": "788cee430f347154b82d8f1ecb5ca0006d44349384e6bb93961e8d614c47d367"
+    },
+    {
+      "file": "lastikadi-logo-180.png",
+      "size": [
+        180,
+        180
+      ],
+      "sha256": "7d1492acb2a3c6ad72d229e2b9e2f8628ee7195a93b410906f9ccde369c0aa4a"
+    },
+    {
+      "file": "lastikadi-logo-152.png",
+      "size": [
+        152,
+        152
+      ],
+      "sha256": "3a11ece5050832144552f3e60e613f7e736ec9b5caf7a72840520f50a9accd0d"
+    },
+    {
+      "file": "lastikadi-logo-144.png",
+      "size": [
+        144,
+        144
+      ],
+      "sha256": "7b74337ff47d7212622e54b1af43f7cbc9702beb4b4e6435595afdd7e16387e3"
+    },
+    {
+      "file": "lastikadi-logo-128.png",
+      "size": [
+        128,
+        128
+      ],
+      "sha256": "ed428528ac92dbd27725c71afc1d3a284ac40a0a2a7977acb8aaa2cb274511dc"
+    },
+    {
+      "file": "lastikadi-logo-96.png",
+      "size": [
+        96,
+        96
+      ],
+      "sha256": "5a4b6e3306deeb4d312f168002344fb7ae648123dec5de50f2bf4ae7e5258b20"
+    },
+    {
+      "file": "lastikadi-logo-72.png",
+      "size": [
+        72,
+        72
+      ],
+      "sha256": "b58023c3248a6f24a6cd4904f01562e4487ceb896f9a98f4b31e771c95b84c47"
+    },
+    {
+      "file": "lastikadi-logo-64.png",
+      "size": [
+        64,
+        64
+      ],
+      "sha256": "8d3db7a05efc7c58c460dc100b8e3d4554addb9114dac3a61c9086dd51316f34"
+    },
+    {
+      "file": "lastikadi-logo-48.png",
+      "size": [
+        48,
+        48
+      ],
+      "sha256": "73ee257183be04df7ba52afd34d2386836e7418cc3905072c5b624f68ba6d1cb"
+    },
+    {
+      "file": "lastikadi-logo-32.png",
+      "size": [
+        32,
+        32
+      ],
+      "sha256": "8bd382ac5603c1aa380a7719c585ba5c65c3e2561127ceda8e9f159beac7561f"
+    }
+  ]
+}

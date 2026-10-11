@@ -273,7 +273,12 @@ export function countdown(seconds) {
   const whole = Math.max(0, Math.floor(seconds));
   const minutes = Math.floor(whole / 60);
   const rest = whole % 60;
-  return String(minutes).padStart(2, '0') + ':' + String(rest).padStart(2, '0');
+  // THE SAME SHAPE THE VENUE DISPLAY PRINTS. tv/lobby.mjs formatCountdown() renders M:SS with
+  // no leading zero on the minutes and `0:00` at the floor; tests/waiting.test.mjs asserts the
+  // two agree case by case, because the room asked for a countdown that "shows in both the
+  // mobile and tv" and two screens printing the same seconds in two shapes is a disagreement
+  // a room notices.
+  return minutes + ':' + String(rest).padStart(2, '0');
 }
 
 /* ------------------------------------------------------------------ what is on screen */

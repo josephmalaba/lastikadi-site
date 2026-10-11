@@ -26,7 +26,7 @@
  * legal, and this picks one. It is a crude points-and-length choice, described
  * plainly, and it is not a bidding system.
  */
-import { GameAuthority } from '../play/host.0810b83e.mjs';
+import { GameAuthority } from '../play/host.e30228b1.mjs';
 import {
   SEATS, STRAINS, PASS, DOUBLE, REDOUBLE, SCORING_IMPLEMENTED, descriptor,
   createAuction, applyCall, isBid, createPlay, legalPlays, playCard, botPlay,

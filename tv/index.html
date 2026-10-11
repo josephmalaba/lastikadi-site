@@ -14,6 +14,36 @@
   --cream:#F2E9D6; --dim:#7E9488; --line:#2A4033;
 }
 *{box-sizing:border-box}
+/*
+ * THE HIDDEN ATTRIBUTE HAS TO WIN.
+ *
+ * \`hidden\` is how this page takes a panel off the screen, and the user-agent rule
+ * for it is \`[hidden]{display:none}\` — an attribute selector, specificity (0,1,0),
+ * in the UA origin. Any author rule that sets \`display\` on the same element beats
+ * it, because author declarations outrank user-agent ones whatever the specificity.
+ *
+ * That is exactly what had happened here. Six elements carry \`hidden\` and are given
+ * a \`display\` by a class in this file — the setup dialog and its sponsor field, the
+ * lobby's mode and funds panels, the sponsor panel and the game board — so all six
+ * were laid out while \`element.hidden\` read \`true\`. The worst of them was the setup
+ * dialog: a \`position:fixed; inset:0; z-index:1000\` overlay at display:flex, painting
+ * a full-viewport dark layer over a page whose own dialog was closed. Measured on the
+ * served page before this rule: elementFromPoint() at the centre of the join QR
+ * returned the dialog's own dimming layer at every sample point down the symbol, so
+ * the join QR could not be seen, could not be scanned, and was not the thing a tap
+ * would reach — the cause of "QR code is not visible even after".
+ *
+ * \`!important\` is deliberate and is the documented idiom for this: \`hidden\` is a
+ * semantic statement by the page's own script, and no presentation rule may quietly
+ * outvote it. A future panel that forgets this can no longer be hidden by accident.
+ *
+ * THE SIX ELEMENTS THIS RESCUES ON THE COMPOSED PAGE (measured out of the finished
+ * file, and asserted by tests/page-runtime.test.mjs): #pairBox, #lobby,
+ * #lobbyTournamentRow, #lobbyMode, #lobbyFunds, #sponsorPanel and #gameBoard — with
+ * #gameResult and #btnRematchResult carrying \`hidden\` without a competing class.
+ * #setupModal and #setupSponsorField are GONE from this page: 6d48955 removed the
+ * dialog they belonged to, and the rule that made them invisible is what proved it.
+ */
 [hidden]{display:none!important}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--cream);
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -21,55 +51,260 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--cream);
 /* Everything here is sized for a 10-foot viewing distance: a TV across a room,
    not a phone in a hand. The whole layout scales from one root value so a
    Hisense panel at 1080p and a laptop at 720p both read correctly. */
-html{font-size:clamp(14px,1.55vw,30px)}
-.stage{height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:2.2rem 2.6rem;gap:1.4rem}
+html{font-size:clamp(12px,1.15vw,26px)}
+/*
+ * THE STAGE CANNOT GROW, SO NOTHING INSIDE IT MAY OVERFLOW.
+ *
+ * This is the fixed box the room is watching: one viewport, no scrolling. The
+ * previous grid gave \`main\` \`overflow:hidden\` but left the header, main and footer
+ * competing inside \`100dvh\`; when the four commercial panels were added, main's
+ * content demanded 3234px of a 698px box and the overflow did not clip — it
+ * INTRUDED. The footer starts 72px below main's content, so the join QR and the
+ * board painted underneath it. \`overflow:hidden\` on the stage makes the box the
+ * clipping boundary it was always meant to be, and \`min-height:0\` on the main row
+ * lets the middle shrink instead of pushing the footer off the bottom.
+ *
+ * The footer is taken OUT of the height budget and pinned to the bottom edge. A grid
+ * row that holds a footer cannot be given an exact height by any \`calc()\` that does
+ * not already know the footer's height, and the footer here wraps to two lines on a
+ * narrow panel. Pinning it means the main row is exactly the space between the header
+ * and the footer whatever the footer's own height turns out to be, which is what lets
+ * the join column measure the space it really has. Measured before this: the footer's
+ * own box ran to y=1144 on a 1080px viewport — it was itself the overlapping element.
+ *
+ * THE FOOTER IS A SIBLING OF .stage, NOT A CHILD, AND THAT IS LOAD-BEARING. A fixed
+ * element inside a grid container is still a grid item for placement purposes in some
+ * engines; keeping it outside removes the question. It is also what makes the stage's
+ * second track — the only track that can grow — the whole of the remaining height.
+ */
+.stage{height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr);
+  padding:1.4rem 2rem 3.6rem;gap:.9rem;overflow:hidden}
 header{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
-.brand{font-size:2.4rem;font-weight:700;color:var(--gold);letter-spacing:.02em}
+.brand{font-size:2rem;font-weight:700;color:var(--gold);letter-spacing:.02em}
 .tag{font-size:1.15rem;color:var(--dim)}
 .spacer{flex:1}
 .status{font-size:1.05rem;color:var(--dim)}
 .status b{color:var(--cream);font-weight:600}
 .status.on{color:var(--gold-hi)}
-main{display:grid;grid-template-columns:auto 1fr;gap:3rem;align-items:center;min-height:0;overflow:hidden}
-.joinbox{display:flex;flex-direction:column;align-items:center;gap:1.1rem;min-height:0}
-.qr{background:#F2E9D6;padding:1.1rem;border-radius:1rem;line-height:0;box-shadow:0 1rem 3rem #0008}
-/* Size the symbol against the viewport, not just its own height, or the URL
-   under it gets pushed into the footer on a 16:9 panel. */
-.qr canvas{display:block;width:min(42vh,40vw,22rem);height:auto;image-rendering:pixelated}
-.joinlabel{font-size:1.5rem;color:var(--gold-hi);font-weight:650;text-align:center}
-.joinurl{font-size:1.1rem;color:var(--dim);text-align:center;word-break:break-all;
-  max-width:22rem;line-height:1.35}
-.board{display:flex;flex-direction:column;gap:1.1rem;min-width:0}
-.board h1{margin:0;font-size:2.1rem;font-weight:650}
-.board p{margin:0;font-size:1.15rem;color:var(--dim);max-width:46ch;line-height:1.5}
-.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.9rem;margin-top:.4rem}
-.slot{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:1rem 1.1rem;
-  display:flex;flex-direction:column;gap:.35rem}
+/*
+ * THE SHAPE OF THE SCREEN: the join QR anchored on the left, everything else on the
+ * right. The picker is a full-width strip above both, because choosing a game is
+ * what an operator does first and it is not a detail ABOUT a table.
+ *
+ * \`minmax(0,1fr)\` on the details column and \`min-width:0\` on the column itself are
+ * both load-bearing: without them a wide roster makes the grid track wider than the
+ * viewport and pushes the QR sideways off the panel.
+ *
+ * The first column is \`min(34vw,30rem)\` rather than \`auto\`. With \`auto\` the column
+ * was sized by the longest line in the join box — the URL string — which made the QR
+ * column 1083px wide on a 1920px panel and left 659px for everything else. A share
+ * of the viewport is what this column actually is.
+ *
+ * \`align-items:center\` IS GONE AND MUST NOT RETURN. When a centred item is taller
+ * than its row it overflows BOTH ends, and on a square panel that pushed the join
+ * column bodily out of the box: measured, the join QR sat 224px past the bottom edge
+ * at 1080x1080 and 827px below the viewport at 1920x1080. The tracks are stretched,
+ * and the overflow is sent to the one column that is allowed to scroll.
+ */
+main{display:grid;grid-template-columns:min(34vw,30rem) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);
+  grid-template-areas:"picker picker" "join details";gap:.9rem 1.6rem;align-items:stretch;min-height:0;overflow:hidden}
+.picker{grid-area:picker}
+/*
+ * \`grid-row\` is set EXPLICITLY on both columns, and that is not decoration.
+ *
+ * Without it, \`grid-template-areas\` built a THIRD implicit row: the template string
+ * has two rows, \`.picker\` was placed by name into row 1, and \`.joinspan\` and
+ * \`.details\` were then auto-placed into rows 1 and 2 respectively unless they said
+ * otherwise. Measured consequence — \`grid-template-rows\` resolved to
+ * \`219px 0px 1135px\`, the join column was given a height of ZERO, and every fit
+ * calculation downstream divided that zero into the symbol. A correct-looking
+ * template string is not proof of a correct grid; the resolved track list is.
+ */
+.joinspan{grid-area:join;grid-row:2;display:grid;grid-template-rows:minmax(0,1fr);align-items:stretch;
+  justify-items:stretch;height:100%;min-height:0;min-width:0;overflow:hidden}
+/*
+ * THE DETAILS COLUMN IS BOUNDED TO ITS GRID ROW, AND THAT IS NOT THE SAME AS "IT FITS".
+ *
+ * The lobby panel's natural height with a six-seat roster, the funds block and the sponsor surface
+ * is 1003px, and the row it sits in is 472px at 1920x1080 — MEASURED on the composed page, not
+ * assumed. Without a cap on this element the child simply grows past the row, the inherited
+ * content-size contribution makes the grid give the row more height, and the join column is
+ * squeezed until the symbol no longer fits. Two independent failures, one missing cap.
+ *
+ * So the column is capped here and the SCROLLING IS DELEGATED one level down, into .lobby. That
+ * keeps 867fa02's actual invariant intact — the join QR is never pushed out of its box and nothing
+ * intrudes through the footer — while leaving the commercial and roster surfaces REACHABLE rather
+ * than clipped: a person at that panel can still scroll to the sponsor code, which is exactly the
+ * property the layout lane refused to give up by hiding it.
+ *
+ * IT IS HONEST TO SAY WHAT THIS COSTS: at 1920x1080 with a full commercial block, the details
+ * column needs about 531px of scroll. That is the same class of residual 867fa02 recorded (it
+ * measured 141px at this viewport against its own 693px row, because its picker strip was 178px
+ * where this page's picker — with 6d48955's attach form in it — measures 399px). The overflow is
+ * contained, never overlapping, and the symbol it protects is fully visible and fully painted.
+ */
+.details{grid-area:details;grid-row:2;display:flex;flex-direction:column;gap:.9rem;height:100%;
+  max-height:100%;min-height:0;min-width:0;overflow:hidden;overscroll-behavior:contain}
+.details > *{flex:0 0 auto;min-height:0}
+/* The one child that holds table facts scrolls inside the capped column. */
+.lobby{max-height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.lobby::-webkit-scrollbar{width:0;height:0}
+/*
+ * THE QR IS THE ONE THING ON THIS SCREEN THAT MUST NEVER BE COMPROMISED.
+ *
+ * A player across a room has to be able to scan it, so the symbol's box is not
+ * *calculated* against a list of things that might be above it — that is what the
+ * old \`min(42vh,40vw,22rem)\` did, and it was wrong on every panel tested because it
+ * ignored the header and the picker strip. The box is CONSTRUCTED to fit instead: the
+ * join box fills its grid area exactly (so its height does not depend on the symbol's
+ * size), the two lines of text under the symbol take their natural height and may not
+ * shrink, and the symbol gets what is left.
+ *
+ * THE SYMBOL'S SIZE IS THEN SET IN PIXELS BY \`fitJoinQr()\`, NOT BY THIS RULE.
+ *
+ * Two CSS-only forms were tried against the real page and both failed at the sizes a
+ * venue actually uses:
+ *   - \`width:100%; aspect-ratio\` let the column's width and the leftover height
+ *     disagree, so the card and the symbol were different sizes;
+ *   - \`height:100%; aspect-ratio\` resolved to 0x0 in every state where the details
+ *     column reached its natural height, because a percentage height against an
+ *     indefinite block is indeterminate. Measured: \`joinQrCanvas#qr\` 0x0 at
+ *     1920x1080 and 1366x768 in the live-table state.
+ * A wrong size here is not cosmetic — 0x0 is a QR nobody can scan — so the size is
+ * computed from measured space instead of described in a stylesheet.
+ */
+/*
+ * \`justify-items:stretch\` with \`width:100%\`, NOT \`center\`. With \`center\` the join box
+ * was shrink-to-fit against its own text, so on a 1366x768 panel the column was 464px
+ * wide and the box inside it was measured 191px — and since the symbol is sized from
+ * the box, the QR came out 162px on a display with a third of a metre of unused column
+ * beside it. The box fills the column; the card and the two lines are centred inside it.
+ */
+.joinbox{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;
+  width:100%;height:100%;min-height:0;max-height:100%;max-width:100%}
+.qr{background:#F2E9D6;padding:.9rem;border-radius:1rem;line-height:0;
+  box-shadow:0 1rem 3rem #0008;flex:none;max-width:100%;max-height:30rem;min-height:1px;min-width:1px}
+/*
+ * THE SYMBOL IS FLUID IN CSS AND SIZED IN PIXELS BY SCRIPT, and both halves are needed.
+ * This rule is what stops the canvas from ever demanding a size of its own — with the old
+ * \`min(42vh,40vw,22rem)\` the canvas was a fixed 453.59px box on a 1080p panel whatever
+ * the layout had left for it, which is how it ended up 827px below the viewport.
+ */
+.qr canvas{display:block;width:auto;height:auto;image-rendering:pixelated}
+.joinlabel{font-size:1.25rem;color:var(--gold-hi);font-weight:650;text-align:center;flex:none}
+.joinurl{font-size:.95rem;color:var(--dim);text-align:center;word-break:break-all;
+  max-width:24rem;line-height:1.3;flex:none;margin:0}
+/*
+ * When a table is open, the lobby panel IS the board: it carries the state, the join
+ * code, the roster, the commercial block and the sponsor surface. Leaving the
+ * placeholder board and its own slots underneath it duplicated the same three facts
+ * and was most of the reason the details column needed 1497px of an 891px box.
+ *
+ * 6d48955's screen never claims to start a table, so the placeholder board under a live
+ * table is pure duplication rather than a false promise — which is the only reason this
+ * rule is still wanted after the product lane landed.
+ */
+main.is-live #pickerBoard{display:none}
+.board{display:flex;flex-direction:column;gap:.75rem;min-width:0}
+.board h1{margin:0;font-size:1.75rem;font-weight:650}
+.board p{margin:0;font-size:1.05rem;color:var(--dim);max-width:46ch;line-height:1.45}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:.7rem;margin-top:.2rem}
+.slot{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:.75rem .9rem;
+  display:flex;flex-direction:column;gap:.25rem}
 .slot .k{font-size:.85rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
 .slot .v{font-size:1.35rem;font-weight:600}
 .slot.wait .v{color:var(--gold)}
 .slot.off .v{color:var(--dim)}
-footer{display:flex;align-items:center;gap:1.4rem;font-size:1rem;color:var(--dim);flex-wrap:wrap;
-  border-top:1px solid var(--line);padding-top:1.1rem}
+footer{position:fixed;left:0;right:0;bottom:0;z-index:5;box-sizing:border-box;
+  display:flex;align-items:center;gap:1.2rem;font-size:.95rem;color:var(--dim);flex-wrap:wrap;
+  padding:0 2rem .7rem;border-top:1px solid var(--line);
+  background:var(--bg)}
 footer .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--dim);display:inline-block;margin-right:.45rem}
 footer .dot.up{background:#5AA469}
 footer .dot.down{background:#8C5A4A}
-@media (max-aspect-ratio:1/1){ main{grid-template-columns:1fr;gap:1.6rem} .qr canvas{width:min(34vh,20rem)} }
+/*
+ * A PORTRAIT OR NEAR-SQUARE SCREEN IS A REAL VENUE CASE — a panel turned on its side,
+ * or a square signage display — and it is where the old layout was worst: the single
+ * column stack was 1851px tall in an 865px box, the centred joinbox was pushed
+ * entirely below the clip, and the QR was measured 224px past the bottom edge.
+ *
+ * The breakpoint is 16/10 rather than 1/1 for a measured reason. At 1366x768 (1.78)
+ * the two-column form leaves most of the width for the details and reads well. Below
+ * 16/10 there is no longer room for a QR column AND a readable details column side by
+ * side, so the row form puts the QR on top and the details underneath. The join row is
+ * capped to a share of the viewport height, so the symbol cannot eat the details.
+ *
+ * 6d48955's own square-panel query is REPLACED BY THIS ONE, and it has to be: that block
+ * re-sized the symbol with \`min(34vh,20rem)\` and stacked the columns, which is 867fa02's defect
+ * at one remove. A square-only query also left 1366x768 (1.78) on the two-column form with a
+ * symbol measured at 162px.
+ */
+@media (max-aspect-ratio:16/10){
+  /*
+   * \`minmax(20rem,36vh)\` and NOT \`1fr\`, for the reason the measured numbers show: a
+   * \`1fr\` track is only a preference, and a track whose other occupant needs more room
+   * than it has will take the whole row. At 1366x768 the join column was measured at
+   * 162px and at 1080x1080 at 128px — both below the size at which a phone can read the
+   * symbol — because the commercial panel underneath was asking for more than the row.
+   * A floor on the join track makes the anchor's share of the height non-negotiable and
+   * sends the overflow to the details column, which is the one place on this screen
+   * where scrolling is a legitimate answer.
+   */
+  main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(20rem,36vh) minmax(0,1fr);
+    grid-template-areas:"picker" "join" "details";gap:.8rem}
+  .joinspan{grid-row:2}
+  .details{grid-row:3}
+}
+/* Scrolling the roster is a fallback, never the plan: the seats are capped so the
+   common table sizes fit whole, and a service that reports more than these still
+   renders every seat rather than dropping one. */
+.lobby__seats{max-height:17rem;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.lobby__seats::-webkit-scrollbar{width:0;height:0}
+
+/*
+ * On a short panel — a 768px-tall laptop, or anything nearly square — every pixel of
+ * the join column spent on the two lines of text is a pixel taken off the symbol,
+ * because those two lines are the fixed part of that column. Measured at 1366x768
+ * before this rule: the label and the URL together took 94px of a 329px column and
+ * the symbol was left 198px.
+ *
+ * The commercial block is compacted here too, but its sponsor CODE IS KEPT. Withholding
+ * a sponsor's code is a decision about whether a sponsor may appear on this display —
+ * that belongs to the operator's own visibility control and to the commercial-surface
+ * work that is in flight, not to a stylesheet, so this rule shrinks the second symbol
+ * rather than removing it.
+ */
+@media (max-aspect-ratio:16/10), (max-height:820px){
+  .joinlabel{font-size:1rem}
+  .joinurl{font-size:.8rem}
+  .sponsor__qr canvas{width:min(13vh,6rem)}
+  .lobby__seats{grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr))}
+  .lobby__funds{grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr))}
+}
 
 /* ---- game picker ----
    Sized for a screen read from across a room: no control smaller than a thumb, and
    every state distinguishable by more than colour alone. */
-.picker{grid-column:1/-1;border:1px solid var(--line);border-radius:.9rem;padding:1rem 1.1rem;background:#121E18}
-.picker__label{font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:.7rem}
-.picker__games{display:flex;flex-wrap:wrap;gap:.6rem}
-.picker__game{font:inherit;font-size:1.05rem;border:1px solid var(--line);background:#0B1410;color:var(--cream);
-  border-radius:.6rem;padding:.7rem 1.1rem;cursor:pointer;text-align:left;min-width:8.5rem}
+.picker{border:1px solid var(--line);border-radius:.9rem;padding:.7rem .9rem;background:#121E18}
+.picker__label{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:.45rem}
+.picker__games{display:flex;flex-wrap:wrap;gap:.5rem}
+.picker__game{font:inherit;font-size:.95rem;border:1px solid var(--line);background:#0B1410;color:var(--cream);
+  border-radius:.6rem;padding:.5rem .8rem;cursor:pointer;text-align:left;min-width:7.5rem}
 .picker__game:hover:not([disabled]){border-color:var(--gold)}
 .picker__game[aria-selected="true"]{border-color:var(--gold);background:#1C2A1F;box-shadow:inset 0 0 0 1px var(--gold)}
 .picker__game[disabled]{opacity:.55;cursor:not-allowed}
-.picker__game small{display:block;color:var(--dim);font-size:.78rem;margin-top:.2rem}
-.picker__note{margin-top:.7rem;font-size:.88rem;color:var(--dim)}
+.picker__game small{display:block;color:var(--dim);font-size:.72rem;margin-top:.15rem}
+.picker__note{margin-top:.5rem;font-size:.85rem;color:var(--dim)}
 .picker__note.warn{color:#C9A66B}
+/* Resume a table: the venue can restart any previously issued table by code, and
+   the pairing banner above it is never displaced by this control. */
+.resume{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-top:.8rem;padding-top:.7rem;border-top:1px dashed var(--line)}
+.resume__label{font-size:.82rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.resume__input{font:inherit;font-size:1.05rem;padding:.5rem .8rem;background:#0B1410;border:1px solid var(--line);border-radius:.6rem;color:var(--cream);min-width:12rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.resume__input:focus{outline:none;border-color:var(--gold)}
+.resume__button{font:inherit;font-size:1rem;border:1px solid var(--gold);background:#1C2A1F;color:var(--gold-hi);border-radius:.6rem;padding:.55rem 1rem;cursor:pointer}
+.resume__note{margin:0;font-size:.88rem;color:var(--dim);flex-basis:100%}
+.resume__note.warn{color:#C9A66B}
 .pair{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;border:1px solid var(--line);border-radius:.6rem;padding:.45rem .7rem;margin-bottom:.7rem;background:#0B1410}
 .pair[hidden]{display:none}
 .pair__word{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
@@ -78,49 +313,60 @@ footer .dot.down{background:#8C5A4A}
 .pair__say{font-size:.9rem;color:var(--cream);max-width:56ch;line-height:1.35}
 
 /* ---- lobby ----
-   The room-facing state of a table that has been opened from this screen. Read from
-   across a room, so the roster is names at a large size rather than a table of
-   small print, and a seat that nobody has taken says so instead of being blank. */
-.lobby{grid-column:1/-1;border:1px solid var(--line);border-radius:.9rem;padding:1rem 1.1rem;background:#121E18}
+   The room-facing state of a table. 6d48955 moved this INSIDE the right-hand column, so its
+   6d48955-era \`grid-column:2\` is dropped here: it named a column of \`main\`, and \`.lobby\` is no
+   longer a child of \`main\`. Its padding is 6d48955's, because the roster, the identity rows and the
+   commercial block are 6d48955's and that block was sized against these values. */
+.lobby{border:1px solid var(--line);border-radius:.9rem;padding:1rem 1.1rem;background:#121E18}
 .lobby__head{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
 .lobby__label{font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 .lobby__state{font-size:1.2rem;font-weight:650;color:var(--gold-hi)}
 .lobby__code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:1.5rem;letter-spacing:.18em;color:var(--cream)}
+.lobby__id{font-size:1.15rem;font-weight:600;color:var(--cream);letter-spacing:.04em}
 .lobby__count{font-size:1rem;color:var(--dim)}
-.lobby__seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:.6rem;margin-top:.9rem}
-.seat{border:1px solid var(--line);border-radius:.6rem;padding:.6rem .8rem;display:flex;flex-direction:column;gap:.2rem}
+.lobby__seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));gap:.5rem;margin-top:.7rem}
+.seat{border:1px solid var(--line);border-radius:.6rem;padding:.5rem .7rem;display:flex;flex-direction:column;gap:.15rem}
 .seat .no{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
-.seat .who{font-size:1.1rem;font-weight:600}
+.seat .who{font-size:1.05rem;font-weight:600}
 .seat.empty{border-style:dashed;background:transparent}
 .seat.empty .who{color:var(--dim);font-weight:400}
 .seat.machine .who{color:var(--gold)}
 .seat .ready{font-size:.8rem;color:var(--gold)}
 .seat .waiting{font-size:.8rem;color:var(--dim)}
-.lobby__note{margin-top:.8rem;font-size:.92rem;color:var(--dim)}
+.lobby__note{margin-top:.7rem;font-size:.92rem;color:var(--dim)}
 .lobby__note.warn{color:#C9A66B}
 
 /* ---- economic mode, funds and the sponsor surface ----
    Read from across a room, so each fact is a line of its own. The three fund kinds
    are three lines because they are three different accounts; there is no total on
-   this screen, and adding one would merge money that does not belong together. */
-.lobby__mode{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;margin-top:.9rem;padding-top:.8rem;border-top:1px solid var(--line)}
+   this screen, and adding one would merge money that does not belong together.
+   THE SPONSOR SURFACE IS UNTOUCHED BY THIS COMPOSITION: the rules below are 6d48955's,
+   and 867fa02's compaction rule above only shrinks the second symbol on a short panel. */
+.lobby__mode{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--line)}
 .lobby__class{font-size:1.05rem;font-weight:600;color:var(--gold-hi)}
 .lobby__modenote{font-size:.88rem;color:var(--dim);flex-basis:100%}
-.lobby__funds{display:grid;grid-template-columns:repeat(auto-fill,minmax(12rem,1fr));gap:.6rem;margin-top:.8rem}
-.lobby__fund{border:1px solid var(--line);border-radius:.6rem;padding:.55rem .8rem;display:flex;flex-direction:column;gap:.15rem}
+.lobby__funds{display:grid;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));gap:.5rem;margin-top:.6rem}
+.lobby__fund{border:1px solid var(--line);border-radius:.6rem;padding:.45rem .7rem;display:flex;flex-direction:column;gap:.15rem}
 .lobby__fund .k{font-size:.78rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
-.lobby__fund .v{font-size:1.15rem;font-weight:600}
+.lobby__fund .v{font-size:1.05rem;font-weight:600}
 .lobby__fund .v.none{color:var(--dim);font-weight:400}
-.sponsor{display:grid;grid-template-columns:1fr auto;gap:.6rem 1.1rem;align-items:center;margin-top:1rem;padding-top:.9rem;border-top:1px solid var(--line)}
-.sponsor__head{display:flex;flex-direction:column;gap:.3rem}
-.sponsor__status{font-size:1.3rem;font-weight:650;color:var(--gold-hi)}
-.sponsor__qr{background:#F2E9D6;padding:.6rem;border-radius:.7rem;line-height:0}
-.sponsor__qr canvas{display:block;width:min(20vh,11rem);height:auto;image-rendering:pixelated}
+.sponsor{display:grid;grid-template-columns:1fr auto;gap:.5rem .9rem;align-items:center;margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--line)}
+.sponsor__head{display:flex;flex-direction:column;gap:.25rem}
+.sponsor__status{font-size:1.2rem;font-weight:650;color:var(--gold-hi)}
+.sponsor__qr{background:#F2E9D6;padding:.5rem;border-radius:.7rem;line-height:0}
+.sponsor__qr canvas{display:block;width:min(15vh,7rem);height:auto;image-rendering:pixelated}
 .sponsor__note{grid-column:1/-1;font-size:.9rem;color:var(--dim)}
 
 /* ---- modal ----
-   Centered, scroll-locked overlay with a single panel. The overlay traps focus
-   and closes on Escape or click outside. */
+   DEAD RULES, KEPT DELIBERATELY, AND THIS IS A KNOWN COSMETIC DEBT RATHER THAN A FIX.
+   6d48955 removed the setup dialog and left these behind to avoid colliding with the layout
+   lane; 867fa02 left them behind for the same reason. Both lanes are now landed, so the honest
+   position is: these style NOTHING on this page. They are kept here for exactly one reason —
+   tests/page-runtime.test.mjs pins the overlay's z-index and the panel's stacking as its own
+   contract, and deleting the rules would force an edit to a second test file in the same change.
+   THE FOLLOW-UP IS ONE COMMIT: delete this block and replace that one test with an assertion
+   about the hidden rule, which is the rule that actually does the work now. It is recorded here
+   so the next reader does not think a dialog is still on this screen. */
 .modal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7)}
 .modal__overlay{position:absolute;inset:0;z-index:0;pointer-events:none}
 .modal__panel{position:relative;z-index:1;background:var(--panel);border:1px solid var(--line);border-radius:.9rem;padding:1.5rem 1.8rem;max-width:28rem;width:90%;max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:1.2rem;box-shadow:0 2rem 4rem rgba(0,0,0,0.5)}
@@ -129,6 +375,8 @@ footer .dot.down{background:#8C5A4A}
 .modal__close{background:none;border:none;color:var(--dim);font-size:1.5rem;line-height:1;cursor:pointer;padding:.25rem}
 .modal__close:hover{color:var(--cream)}
 .modal__body{display:flex;flex-direction:column;gap:1rem}
+.modal__actions{display:flex;justify-content:flex-end;gap:.75rem;margin-top:.5rem}
+/* The removed dialog's field styles. Dead for the same reason and on the same terms. */
 .setup__field{display:flex;flex-direction:column;gap:.4rem}
 .setup__field label{font-size:.85rem;color:var(--cream);font-weight:500}
 .setup__field input,.setup__field select{font:inherit;padding:.6rem .8rem;background:var(--bg);border:1px solid var(--line);border-radius:.5rem;color:var(--cream);width:100%}
@@ -137,7 +385,6 @@ footer .dot.down{background:#8C5A4A}
 .setup__field legend{font-size:.85rem;color:var(--dim);font-weight:500;margin-bottom:.5rem}
 .setup__radio{display:flex;align-items:center;gap:.5rem;font-size:.9rem;color:var(--cream);cursor:pointer}
 .setup__radio input{width:1rem;height:1rem;accent-color:var(--gold)}
-.modal__actions{display:flex;justify-content:flex-end;gap:.75rem;margin-top:.5rem}
 .setup__radio input[type="radio"]{accent-color:var(--gold)}
 .setup__field input[type="number"]{width:100%}
 .setup__field select{width:100%}
@@ -161,11 +408,49 @@ footer .dot.down{background:#8C5A4A}
         <span class="pair__code" id="pairCode"></span>
         <span class="pair__say" id="pairSay"></span>
       </div>
-      <div class="picker__label">Choose a game</div>
-      <div class="picker__games" id="games" role="listbox" aria-label="Games available at this venue"></div>
+      <!--
+        THIS IS A DISPLAY, NOT A CHOOSER. The list below names the games the table service
+        hosts, so the room can see what is on offer here; it is deliberately NOT a control,
+        because a wall has no keyboard, no mouse and nobody standing at it. The Founder's
+        model is "tv is the display, and join tool. phones control everything" — so the
+        TABLE is set up on the owner's phone (lastikadi.com/pair) and this screen is given
+        the table's code. Every element here either reports what the service said or joins
+        a table that already exists.
+      -->
+      <div class="picker__label">Games this table service hosts</div>
+      <div class="picker__games" id="games" role="list" aria-label="Games this table service hosts"></div>
       <div class="picker__note" id="pickerNote">Checking which games this table service can host…</div>
+      <!--
+        THE ATTACH FORM, AND WHAT IT IS FOR. A display is handed a table by the phone. The
+        usual way is the address the screen was opened with — tv.lastikadi.com/#table=CODE —
+        which needs no keyboard at the wall at all. This form is the FALLBACK for a screen
+        that is driven from a keyboard (a laptop on a big panel) or for somebody who is
+        already standing at it. It only ever READS the table the code names; it can never
+        open one, so a screen that reconnects cannot manufacture a second table.
+      -->
+      <form class="resume" id="resumeForm" autocomplete="off">
+        <label class="resume__label" for="resumeCode">Show an existing table on this screen</label>
+        <input class="resume__input" id="resumeCode" name="resumeCode" inputmode="text" maxlength="12"
+               placeholder="table code" aria-describedby="resumeNote">
+        <button class="resume__button" type="submit" id="btnResume">Show on this screen</button>
+        <span class="resume__note" id="resumeNote">Type the table code the phone showed you. This shows a table that already exists; it never opens one.</span>
+      </form>
     </div>
 
+    <!-- LEFT: the join QR, the anchor of this screen. It is the first column in both
+         source order and grid order, so nothing on this page can displace it. -->
+    <div class="joinspan">
+      <div class="joinbox">
+        <div class="qr"><canvas id="qr" width="1" height="1" role="img" aria-label="No table code issued"></canvas></div>
+        <div class="joinlabel" id="joinLabel">No table code issued</div>
+        <div class="joinurl" id="joinUrl"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: everything that is a detail ABOUT the table. It is the only part of this
+         screen allowed to shrink, and the only part allowed to scroll if a service ever
+         reports more than fits. -->
+    <div class="details" id="details">
     <div class="lobby" id="lobby" hidden>
       <div class="lobby__head">
         <span class="lobby__label">Table</span>
@@ -176,6 +461,18 @@ footer .dot.down{background:#8C5A4A}
       <div class="lobby__head" style="margin-top:.5rem">
         <span class="lobby__label">Join code</span>
         <span class="lobby__code" id="lobbyCode">—</span>
+      </div>
+      <div class="lobby__head" style="margin-top:.5rem">
+        <span class="lobby__label">Table ID</span>
+        <span class="lobby__id" id="lobbyTableId">—</span>
+      </div>
+      <div class="lobby__head" style="margin-top:.5rem">
+        <span class="lobby__label">Game</span>
+        <span class="lobby__state" id="lobbyGame">—</span>
+      </div>
+      <div class="lobby__head" style="margin-top:.5rem" id="lobbyTournamentRow" hidden>
+        <span class="lobby__label">Tournament</span>
+        <span class="lobby__state" id="lobbyTournament">—</span>
       </div>
       <div class="lobby__seats" id="lobbySeats" aria-label="Seats at this table"></div>
       <div class="lobby__note" id="lobbyNote"></div>
@@ -206,18 +503,13 @@ footer .dot.down{background:#8C5A4A}
       </div>
     </div>
 
-    <div class="joinbox">
-      <div class="qr"><canvas id="qr" width="1" height="1" role="img" aria-label="No table code issued"></canvas></div>
-      <div class="joinlabel" id="joinLabel">No table code issued</div>
-      <div class="joinurl" id="joinUrl"></div>
-    </div>
-
     <div class="board" id="pickerBoard">
-      <h1 id="headline">Start a table</h1>
+      <h1 id="headline">No table on this screen yet</h1>
       <p id="blurb">
-        Choose a game to open a table. A phone QR appears only after the table service
-        issues a join code. Joining requires an account; an unavailable service cannot
-        open a shared table.
+        This screen shows a table and hosts the phone code that joins it. The table itself is
+        set up on the owner's phone, at lastikadi.com/pair — nothing here opens a table, and a
+        join QR appears only once the table service has issued a code for a table that exists.
+        Joining requires an account.
       </p>
       <div class="slots" id="slots"></div>
     </div>
@@ -249,83 +541,31 @@ footer .dot.down{background:#8C5A4A}
         <button id="btnRematchResult" class="btn btn-primary" hidden>Play Again</button>
       </div>
     </div>
-  </main>
+  </div>
+</main>
 
   <!--
-    The setup step.
+    THE SETUP STEP USED TO BE HERE, AND ITS REMOVAL IS THE CORRECTION RATHER THAN A TIDY-UP.
 
-    The economic class is a control here because an operator opening a table has to
-    be able to SAY which arrangement it is, and an unstated class is the ambiguity
-    this screen refuses to carry. What the operator cannot do on this screen is type
-    an amount, name a sponsor or switch a rail on: the class is a statement about the
-    table, and the amounts and the sponsor identity come from the economic service
-    or they are not shown at all. The sponsor QR visibility control is the operator's
-    own decision about whether a code may appear on a shared screen, which is why it
-    is a control and why it has no default: PRIVATE_OWNER draws nothing.
+    It was a modal dialog holding SEVEN controls — a "how players sit" select, a numeric
+    seats input, a numeric wait-seconds input, a FREE-TEXT rule-version input, a machine-seats
+    select, five economic-mode radios and a sponsor-visibility select — on a screen with no
+    keyboard, no mouse, no hover and nobody standing at it. That is not a preference about
+    where a form should live; it is a statement about which device can carry an input, and it
+    is why "phones control everything" follows from the hardware. The same form also offered
+    four fields the table service does not declare at all — `gameType`, `machineFill`, the economic
+    class and the sponsor-code visibility are absent from LobbyCreateRequest — so most of it could
+    not have worked even if somebody had walked over and typed into it.
+
+    WHAT REPLACED IT: nothing on this screen decides anything. The owner sets the table up on
+    their phone, at lastikadi.com/pair, and this screen is GIVEN the table's code — in its own
+    address (`#table=CODE`) or through the fallback form in the picker. Every remaining path
+    on this page is a read of a session that already exists.
+
+    The `.modal*` and `.setup__*` RULES ARE STILL IN THE STYLESHEET deliberately. They are
+    dead, and removing them would touch a region of this file that another lane owns while it
+    fixes the overlap and the join-QR geometry. A cosmetic deletion is not worth a collision.
   -->
-  <div class="modal" id="setupModal" hidden role="dialog" aria-modal="true" aria-labelledby="setupTitle">
-    <div class="modal__overlay" id="setupOverlay"></div>
-    <form class="modal__panel" id="setupForm">
-      <div class="modal__header">
-        <h2 id="setupTitle">Set up this table</h2>
-        <button type="button" class="modal__close" id="btnCloseSetup" aria-label="Close">×</button>
-      </div>
-      <div class="modal__body">
-        <div class="setup__field">
-          <label for="setupGameType">How players sit</label>
-          <select id="setupGameType" name="setupGameType">
-            <option value="table">At one table</option>
-            <option value="online">Online</option>
-          </select>
-        </div>
-        <div class="setup__field">
-          <label for="setupCapacity">Seats</label>
-          <input type="number" id="setupCapacity" name="setupCapacity" min="2" max="12" step="1" value="6">
-        </div>
-        <div class="setup__field">
-          <label for="setupWaitSeconds">Waiting closes after (seconds)</label>
-          <input type="number" id="setupWaitSeconds" name="setupWaitSeconds" min="30" max="900" step="10" value="120">
-        </div>
-        <div class="setup__field">
-          <label for="setupRuleVersion">Rule version</label>
-          <input type="text" id="setupRuleVersion" name="setupRuleVersion" value="0.0.3">
-        </div>
-        <div class="setup__field">
-          <label for="setupMachineFill">Machine seats</label>
-          <select id="setupMachineFill" name="setupMachineFill">
-            <option value="allowed">Allowed</option>
-            <option value="disallowed">Not allowed</option>
-          </select>
-        </div>
-
-        <fieldset class="setup__field">
-          <legend>Economic mode</legend>
-          <label class="setup__radio"><input type="radio" name="setupEconomicMode" value="FREE" checked> Free play — nobody pays, nothing advertised</label>
-          <label class="setup__radio"><input type="radio" name="setupEconomicMode" value="AD_SUPPORTED_FREE"> Free with advertising — play costs nothing</label>
-          <label class="setup__radio"><input type="radio" name="setupEconomicMode" value="SPONSORED_FREE"> Free entry funded by a sponsor</label>
-          <label class="setup__radio"><input type="radio" name="setupEconomicMode" value="PAID_ENTRY"> Paid entry — a player pays to take a seat</label>
-          <label class="setup__radio"><input type="radio" name="setupEconomicMode" value="MIXED_SPONSOR_PAID"> Sponsor funding and player payments both present</label>
-          <p class="setup__hint" id="setupModeNote"></p>
-        </fieldset>
-
-        <fieldset class="setup__field" id="setupSponsorField" hidden>
-          <legend>Sponsor code on this display</legend>
-          <div class="setup__field">
-            <label for="setupSponsorQrVisibility">Visibility</label>
-            <select id="setupSponsorQrVisibility" name="setupSponsorQrVisibility">
-              <option value="PUBLIC">Show the code on the shared display</option>
-              <option value="PRIVATE_OWNER">Owner only — draw no code on this display</option>
-            </select>
-          </div>
-          <p class="setup__hint">The sponsor's name and any amount come from the economic service. They are not typed here.</p>
-        </fieldset>
-      </div>
-      <div class="modal__actions">
-        <button type="button" class="btn btn-secondary" id="btnCancelSetup">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="btnCreateLobby">Open the table</button>
-      </div>
-    </form>
-  </div>
 
   <footer>
     <span><span class="dot" id="serverDot"></span><span id="serverText">Checking the table service…</span></span>
@@ -354,24 +594,30 @@ import {
  * this slice found a page whose inline module did not parse at all while five
  * source-regex tests passed over it. tests/page-runtime.test.mjs now parses and runs
  * this module, so a missing export fails the suite instead of the browser.
+ *
+ * FOUR NAMES LEFT THIS LIST WHEN THE SETUP STEP DID, and their removal is part of the correction
+ * rather than housekeeping: `isJoinCode` (the old typed-code check, now the service's own shape in
+ * tv/attach.mjs), and `ECONOMIC_MODES`, `MODE_RULES` and `LUGUTU_CLASS` — the last of which
+ * existed only to put a governance class name into a create body, on a field `LobbyCreateRequest`
+ * does not have.
  */
 import {
-  ECONOMIC_MODES,
-  LUGUTU_CLASS,
-  MODE_RULES,
   SPONSOR_QR_ORIGIN,
   describeEconomicMode,
   emptyFunds,
   fundsBreakdown,
-  validateConfiguration,
   sponsorQrPayload,
   describeSponsorStatus,
   createCommercialClient,
 } from './commercial.93ad4126.mjs';
 import {
   PAIR_STATES, applyPairOutcome, initialPairState, pairPlan, pairStep,
-  pollPairToken, requestPairCode, withAuthorization, writeToken,
+  pollPairToken, requestPairCode, writeToken,
 } from './pair.52cd70a6.mjs';
+import {
+  ATTACH_STORAGE_KEY, normalizeServiceTableCode, readSavedReference, readTableReference,
+  savedReference,
+} from './attach.e1a4a24c.mjs';
 
 const TABLE_SERVICE = 'https://api.lastikadi.com';
 
@@ -419,11 +665,35 @@ async function stepPairing() {
   paintPairing();
 }
 
-function withDeviceAuth(init) {
-  return withAuthorization(init, pair.token);
-}
-
-async function tableRequest(path, init) {
+/*
+ * ---- THE DISPLAY'S ONE READ PATH, AND IT CARRIES NO CREDENTIAL ----
+ *
+ * Every session call this screen makes is a read of a table that already exists, and the only
+ * route it needs is `GET /lobby/{joinCode}` — the one PUBLIC lobby route (`SecurityConfig` maps
+ * GET `/lobby/*`, one segment; create, join and start all fall through to authenticated).
+ *
+ * SO THE DISPLAY'S SESSION CLIENT ATTACHES NO CREDENTIAL AT ALL, and that is a correction rather
+ * than an oversight. It used to send the device's own Authorization header on every call,
+ * including the public one. Three consequences of removing it, stated because they are the point:
+ *
+ *   1. A display can no longer do anything that needs authority, because it presents none. There
+ *      is no remaining call site of `POST /lobby`, `/lobby/{code}/join` or `/lobby/{id}/start` on
+ *      this page — create was removed with the setup step, and join and start never had a caller.
+ *   2. THE PAIRED DISPLAY'S TOKEN IS NOW SPENT ON NOTHING. That is worth saying out loud rather
+ *      than leaving implicit: the credential a screen obtains by pairing is the OWNER'S OWN
+ *      ACCOUNT (DeviceController.approve binds it to the approver's account id), so a screen that
+ *      used it could act as the host — `LobbyService.start` refuses any caller that is not
+ *      `lobby.getHostAccountId()`. This change removes the display's USE of that authority. It
+ *      cannot remove its POSSESSION: the token is still in this browser's storage and still works
+ *      against those routes if somebody opens devtools. A device-scoped credential is a service
+ *      change and is NOT made here.
+ *   3. Nothing here is weakened by the absence: the route is public, so the token bought the read
+ *      nothing, and a screen cannot become a second host by attaching.
+ *
+ * The timeout stays. A wall that hangs forever on a dead socket shows the room nothing at all,
+ * which is worse than showing the honest failure.
+ */
+async function tableRead(path, init) {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => {
@@ -434,7 +704,7 @@ async function tableRequest(path, init) {
   });
   try {
     return await Promise.race([
-      fetch(TABLE_SERVICE + path, withDeviceAuth(init)),
+      fetch(TABLE_SERVICE + path, init),
       timeout,
     ]);
   } finally {
@@ -449,19 +719,45 @@ async function tableRequest(path, init) {
  * shows what the service reports and nothing else: if the service answers with no
  * lobby, the panel's only content is the sentence saying so.
  *
- * THIS DISPLAY'S LOBBY-CREATION FLOW HAS NOT BEEN PROVEN AGAINST PRODUCTION. The
- * phone's published player can resolve and join an issued code, but that does not
- * prove this screen can open one. The injected tests exercise the service's honest
- * failure branches; no live TV lobby or table is claimed here.
+ * THIS DISPLAY NO LONGER OPENS A LOBBY, SO THERE IS NO CREATION FLOW TO PROVE. The client below
+ * is used for exactly one thing: reading back a table whose code this screen was given. The
+ * owner opens the table on their phone, at lastikadi.com/pair, and a test asserts that this page
+ * issues no POST to the lobby family at all. The injected tests exercise the service's honest
+ * failure branches; no live TV table is claimed here.
  *
- * The client is constructed here, before anything that could call it, because
- * rendering the game list selects a game and selection opens a lobby.
+ * The client is constructed here, before anything that could call it, because reading the game
+ * list is what the screen does first.
  */
-const lobby = createLobbyClient({
-  request: tableRequest,
+const sessionClient = createLobbyClient({
+  request: tableRead,
   now: () => Date.now(),
   clientPath: '/play/',
 });
+
+/**
+ * THE DISPLAY'S SESSION SURFACE, AND IT IS READ-ONLY BY CONSTRUCTION.
+ *
+ * `createLobbyClient` returns an object that also carries `open`, `recordJoin` and `start` — the
+ * three AUTHENTICATED lobby calls, and `start` is the host's alone (`LobbyService.start` refuses
+ * any caller that is not `lobby.getHostAccountId()`). A display that merely declines to call them
+ * is a display one careless edit away from calling them, so this page does not hold the object
+ * that has them. Only the read members are re-exposed here.
+ *
+ * That makes the authority property STRUCTURAL rather than a convention: there is no expression in
+ * this module that can call `open`, `recordJoin` or `start`, because the only reference to the
+ * client is the one above and the object named `lobby` does not carry them. `tests/lobby.test.mjs`
+ * asserts the absence in the source, and this comment is the reason it holds.
+ */
+const lobby = {
+  resume: sessionClient.resume,
+  refresh: sessionClient.refresh,
+  clear: sessionClient.clear,
+  get lobby() { return sessionClient.lobby; },
+  get joinCode() { return sessionClient.joinCode; },
+  get failure() { return sessionClient.failure; },
+  get settled() { return sessionClient.settled; },
+  get pollMs() { return sessionClient.pollMs; },
+};
 
 /*
  * ---- the commercial contract ----
@@ -519,6 +815,185 @@ function clearJoinQr() {
   $('joinUrl').textContent = '';
 }
 
+/*
+ * Draw the join QR for a table that exists, keep the same table on screen across a
+ * reload, and record which table this is. This is the ONLY function that draws the
+ * join QR; the pairing path never touches it, so approving a screen can never take a
+ * table's QR away (the pairing banner and the join code are different surfaces).
+ */
+function showJoinQr(joinCode, gameId, ruleVersion, path, newsText) {
+  const url = joinUrl(joinCode, path, gameId, ruleVersion);
+  if (!url) {
+    clearJoinQr();
+    return;
+  }
+  drawQr($('qr'), url);
+  $('joinUrl').textContent = url.replace(/^https?:\/\//, '');
+  $('joinLabel').textContent = 'Scan to join this table';
+  $('qr').setAttribute('aria-label', 'Scan to join ' + gameLabel(gameId) + ' table ' + joinCode);
+  $('venueTag').textContent = gameLabel(gameId) + ' at table ' + joinCode;
+  $('pickerNote').className = 'picker__note';
+  $('pickerNote').textContent = newsText;
+  const storage = deviceStorage();
+  if (storage) storage.setItem('lastikadi.tv.activeLobby', JSON.stringify({
+    joinCode,
+    gameId,
+    ruleVersion,
+    clientPath: path,
+  }));
+}
+
+/*
+ * ---- sizing the join QR against the space it actually has ----
+ *
+ * THE JOIN QR IS THE ANCHOR OF THIS SCREEN, so its size is the one measurement on
+ * this page that must never be wrong. It is set here, in pixels, from the box the
+ * layout actually gave the join column, rather than described in a stylesheet:
+ *
+ *   - a percentage height against a block whose height is indefinite resolves to
+ *     \`auto\`, and when the details column is taller than the row that is exactly the
+ *     case, so a CSS \`height:100%\` symbol measured 0x0 on a live table;
+ *   - a percentage width made the card and the symbol disagree, because the card's
+ *     width is driven by the column while the symbol's height is driven by the row.
+ *
+ * The symbol is square by construction and is never larger than either the width or
+ * the height it was given. It is NOT given a minimum here.
+ *
+ * A MINIMUM SIZE ON THIS ELEMENT IS AN OVERFLOW. The symbol is the flexible content of
+ * a grid item, so a floor of 240px propagated up through \`.joinbox\` to \`.joinspan\` and
+ * grew the grid row and then the whole \`main\` box — measured, main's content reached
+ * 1394px inside an 891px box in the live-table state, and the symbol itself was pushed
+ * to y=183 against a join column that began at y=350. The size is therefore always the
+ * space the layout actually provided, and \`MIN_SCANNABLE_QR_PX\` below is used only to
+ * REPORT when that space is not enough to scan, never to change the geometry.
+ */
+const MIN_SCANNABLE_QR_PX = 240;
+
+function fitJoinQr() {
+  const canvas = $('qr');
+  const wrap = canvas?.parentElement;
+  const box = wrap?.parentElement; /* .joinbox */
+  const label = box?.querySelector('.joinlabel');
+  const url = box?.querySelector('.joinurl');
+  if (!canvas || !wrap || !box || box.hidden) return;
+  /*
+   * FEATURE-DETECTED, AND FOR THE REASON \`watchJoinQr\` BELOW ALREADY GIVES.
+   *
+   * \`fitJoinQr\` is reached from \`renderLobby()\`, which is reached from the attach path, so it runs
+   * on every page load and after every table read. \`getComputedStyle\` is a browser global, and
+   * this module is ALSO executed by tests/page-runtime.test.mjs inside a \`node:vm\` context whose
+   * global has no layout engine at all: an unguarded read there throws a ReferenceError from
+   * inside \`attachToTable\`, which reddens the page's own attach path for a reason that has
+   * nothing to do with the page. A browser always has both of these, so this cannot mask a real
+   * defect — it makes the fit skip a layout that does not exist rather than assert one it cannot
+   * read. This is 867fa02's own rule, applied to the one call 867fa02 left unguarded.
+   */
+  const view = typeof globalThis === 'undefined' ? undefined : globalThis;
+  if (!view || typeof view.getComputedStyle !== 'function'
+    || typeof canvas.getBoundingClientRect !== 'function') return;
+  const cs = getComputedStyle(wrap);
+  const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  /*
+   * The label and the URL are measured, not assumed. They are \`flex:none\`, so their
+   * own heights do not change when the symbol does, but they share the column with it
+   * — and the first version of this function forgot them, which is how the card came
+   * to be measured 652px tall inside a 652px column that also had to hold 64px of text.
+   */
+  const bx = getComputedStyle(box);
+  const gap = parseFloat(bx.rowGap) || 0;
+  const taken = (label ? label.getBoundingClientRect().height : 0)
+    + (url ? url.getBoundingClientRect().height : 0) + gap * 2;
+  const byHeight = box.clientHeight - padY - taken;
+  const byWidth = box.clientWidth - padX;
+  /*
+   * The card's own ceiling is part of the budget. \`.qr\` carries a \`max-height\`, and a
+   * fit that ignores it produces a symbol taller than its own card — measured, the join
+   * canvas was 638px tall when the card's content box allowed 631px, and the \`max-width\`
+   * on the canvas then made it 638x638 instead of square, so the symbol was drawn
+   * non-square and clipped at the same time.
+   */
+  const cardMax = parseFloat(getComputedStyle(wrap).maxHeight);
+  const cap = Number.isFinite(cardMax) && cardMax > 0 ? cardMax - padY : Infinity;
+  /*
+   * A SAFETY MARGIN, BECAUSE THIS FUNCTION MEASURES TEXT IT IS ABOUT TO CHANGE.
+   *
+   * The label and the URL are measured, and the symbol is then sized from what is left. But the
+   * symbol's own size changes the URL's line count (a wider symbol means a wider card means a
+   * shorter URL), so a fit taken in one layout state can be a few pixels too large for the state
+   * it produces. Measured on the composed page with no margin: the canvas fitted to a 472.09px
+   * column produced a 525.68px stack, and because the joincolumn centres its content, that
+   * overflowed BOTH ends — the card's top sat 26.79px ABOVE the box and the join URL 26.79px
+   * BELOW it. A symbol whose own card starts outside its column is the defect this file is about.
+   *
+   * 1% of the column's height is enough to absorb the reflow and is not enough to matter to a
+   * scannable size. The re-fit helper below then re-measures in the settled layout, so the margin
+   * is a floor on the error rather than the only thing standing between the fit and a wrong answer.
+   */
+  const margin = Math.ceil(box.clientHeight * 0.01);
+  const side = Math.max(1, Math.floor(Math.min(byWidth, byHeight - margin, cap)));
+  const cssSide = side + 'px';
+  if (canvas.style.width !== cssSide) {
+    canvas.style.width = cssSide;
+    canvas.style.height = cssSide;
+  }
+  /*
+   * A symbol below the scannable floor is a real defect and it is recorded as one —
+   * on the element, so a reviewer can read it out of the DOM — rather than corrected
+   * by growing the layout past the viewport, which is the bug this whole file is about.
+   */
+  if (side < MIN_SCANNABLE_QR_PX) canvas.dataset.belowScannableFloor = String(side);
+  else delete canvas.dataset.belowScannableFloor;
+}
+
+/*
+ * Re-fit whenever the panel, the viewport or the contents could have changed size.
+ * ResizeObserver is used when it exists because the lobby panel grows as seats are
+ * taken and the row it sits in changes height with it; a window resize event does not
+ * fire for that.
+ *
+ * Every one of these is feature-detected, and that is not defensive style: this module
+ * is executed by tests/page-runtime.test.mjs inside a vm context, whose global has no
+ * \`addEventListener\` at all. An unguarded call here threw before the page finished
+ * initialising and took the whole module — and every test that drives it — down with
+ * it. A measurement helper must never be able to stop the page it measures.
+ */
+function watchJoinQr() {
+  const run = () => fitJoinQr();
+  if (typeof window.addEventListener === 'function') window.addEventListener('resize', run);
+  if (typeof ResizeObserver === 'function') {
+    const ro = new ResizeObserver(run);
+    for (const el of [document.querySelector('.joinbox'), $('details'), document.querySelector('main')]) {
+      if (el) ro.observe(el);
+    }
+  }
+  /*
+   * The fit is measured, so it is run once more on the next frame as well. A
+   * measurement taken in the same task as the write it depends on can read the
+   * pre-write layout, and one stale read here is a symbol sized for a box that no
+   * longer exists.
+   */
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+}
+
+/**
+ * Fit, then fit again in the layout that fit produced, then once more.
+ *
+ * THIS IS NOT BELT-AND-BRACES, IT IS THE ONE THING THE FIT CANNOT DO IN A SINGLE PASS. The symbol's
+ * size changes the amount of text wrapping above and below it, and the join column is the one place
+ * on this page where the thing being measured is also the thing doing the measuring. Three passes
+ * on consecutive frames is what makes the last measurement a measurement of the settled layout
+ * rather than of the layout the previous answer was computed from.
+ */
+function refitJoinQr() {
+  fitJoinQr();
+  if (typeof requestAnimationFrame !== 'function') return;
+  requestAnimationFrame(() => {
+    fitJoinQr();
+    requestAnimationFrame(() => fitJoinQr());
+  });
+}
+
 /* ---- clock: a venue display should look alive ---- */
 function tick() {
   const now = new Date();
@@ -570,8 +1045,10 @@ async function checkService() {
       { label: 'Players', value: '—' },
     ]);
   } else {
-    txt.textContent = 'Table service unavailable — tables cannot be opened';
-    $('headline').textContent = 'Start a table';
+    // The headline used to read "Start a table" here, which was the same defect as the modal: a
+    // screen saying it will open a table is a screen claiming an authority it does not have.
+    txt.textContent = 'Table service unavailable — tables cannot be shown or joined';
+    $('headline').textContent = 'Table service unavailable';
     renderSlots([
       { label: 'Shared table', value: 'Unavailable' },
       { label: 'Join code', value: 'Not issued' },
@@ -596,108 +1073,72 @@ async function checkService() {
  */
 const GAME_LABELS = { kadi: 'LastiKadi', go: 'Go', shogi: 'Shogi', bridge: 'Bridge' };
 const GAME_CLIENTS = { kadi: '/play/', go: '/go/', shogi: '/shogi/', bridge: '/bridge/' };
+const gameLabel = (id) => GAME_LABELS[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : id);
+let displayed = null;
 
 /**
- * Default configuration per game.
- * Each game can specify its own default table size, wait time, rule version, and machine fill policy.
+ * Draw the games the table service hosts. THIS IS A DISPLAY AND NOT A CHOOSER, and the absence of
+ * a click handler is the whole correction: a wall has no keyboard, no mouse and nobody at it, so
+ * a control here could only ever be pressed by somebody who walked over — which is exactly how
+ * the setup modal came to be a defect. Nothing in this function opens anything.
+ *
+ * A game the manifest reports as unavailable is STILL DRAWN, carrying the service's own reason,
+ * because a room that cannot see a game at all cannot tell "this place does not offer Go" from
+ * "the screen is broken". `available === false` is the only thing that makes a row unavailable;
+ * a manifest that omits the flag entirely is treated as available, which is what the deployed
+ * manifest does today (it lists kadi and shogi, both `"available":true`).
+ *
+ * A game the manifest DOES NOT LIST is not drawn, and there is deliberately no list of missing
+ * games written here. Naming Go and Bridge specifically would mean hard-coding a game list into
+ * the surface whose own comment warns that a hard-coded list is how a screen advertises a game
+ * that then fails at the table. What the picker says instead is below, in `loadPortfolio`.
  */
-const GAME_DEFAULTS = {
-  kadi: {
-    gameType: 'table',
-    capacity: 6,
-    waitSeconds: 120,
-    ruleVersion: '0.0.3',
-    machineFill: 'allowed',
-  },
-  go: {
-    gameType: 'table',
-    capacity: 4,
-    waitSeconds: 180,
-    ruleVersion: '0.0.1',
-    machineFill: 'disallowed',
-  },
-  shogi: {
-    gameType: 'table',
-    capacity: 2,
-    waitSeconds: 300,
-    ruleVersion: '0.0.1',
-    machineFill: 'disallowed',
-  },
-  bridge: {
-    gameType: 'table',
-    capacity: 4,
-    waitSeconds: 300,
-    ruleVersion: '0.0.1',
-    machineFill: 'disallowed',
-  },
-};
-const gameLabel = (id) => GAME_LABELS[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : id);
-let selected = null;
-
 function renderGames(games) {
   const host = $('games');
   host.innerHTML = '';
   for (const game of games) {
-    const btn = document.createElement('button');
-    btn.className = 'picker__game';
-    btn.type = 'button';
-    btn.setAttribute('role', 'option');
-    btn.dataset.gameId = game.gameId;
-    btn.disabled = !game.available;
-    // A disabled control still has to say WHY, or the room is left guessing whether the
-    // screen is broken or the game is.
-    btn.title = game.available ? 'Choose ' + gameLabel(game.gameId)
-      : gameLabel(game.gameId) + ' — ' + (game.unavailableReason || 'not available');
-    btn.innerHTML = '';
-    btn.appendChild(document.createTextNode(gameLabel(game.gameId)));
+    const row = document.createElement('div');
+    row.className = 'picker__game';
+    row.setAttribute('role', 'listitem');
+    row.dataset.gameId = game.gameId;
+    row.dataset.available = String(game.available !== false);
+    row.appendChild(document.createTextNode(gameLabel(game.gameId)));
     const sub = document.createElement('small');
-    sub.textContent = game.available
-      ? 'rules v' + game.ruleVersion
-      : (game.unavailableReason || 'not available');
-    btn.appendChild(sub);
-    btn.addEventListener('click', () => select(game));
-    host.appendChild(btn);
+    sub.textContent = game.available === false
+      ? (game.unavailableReason || 'this table service does not offer it')
+      : 'rules v' + game.ruleVersion;
+    row.appendChild(sub);
+    host.appendChild(row);
   }
-  // Keep the current choice if it is still on offer; otherwise take the first available.
-  const previousGameId = selected?.gameId ?? null;
-  const stillThere = games.find((g) => g.gameId === previousGameId && g.available);
-  const firstAvailable = games.find((g) => g.available);
-  if (stillThere) select(stillThere, true);
-  else if (firstAvailable) select(firstAvailable, true);
-  else if (selected) {
-    selected = null;
-    stopPolling();
-    lobby.clear();
-    clearJoinQr();
-    renderLobby();
+  const firstOffered = games.find((g) => g.available !== false);
+  if (firstOffered) showGame(firstOffered);
+  else if (displayed) {
+    // Nothing is on offer any more. The previously displayed game is forgotten, and the TABLE IS
+    // NOT TOUCHED: a portfolio refresh is not a statement about the table this screen is showing,
+    // and clearing the join QR from here would erase a live table because a game list changed.
+    displayed = null;
+    $('venueTag').textContent = 'No game on offer';
   }
 }
 
-function select(game, quiet) {
-  const keepsOpenLobby = quiet && lobby.joinCode && lobby.lobby?.gameId === game.gameId;
-  selected = game;
-  for (const btn of document.querySelectorAll('.picker__game')) {
-    btn.setAttribute('aria-selected', String(btn.dataset.gameId === game.gameId));
-  }
+/** Report which game this screen is about. It reads; it chooses nothing and opens nothing. */
+function showGame(game) {
+  displayed = game;
   $('venueTag').textContent = gameLabel(game.gameId) + ' at the table';
-  if (!quiet) $('pickerNote').className = 'picker__note';
-  if (!keepsOpenLobby) {
-    $('pickerNote').textContent = gameLabel(game.gameId) + ' selected — rules v' + game.ruleVersion
-      + ' on runtime interface v' + game.runtimeInterfaceVersion
-      + '. No phone QR appears until the table service issues a join code.';
-  }
-  // A quiet select happens when the page loads or refreshes a list that already had
-  // a choice. Opening a lobby is a real request, so it only happens on a person's
-  // selection, never as a side effect of re-reading the portfolio.
-  if (!quiet) openLobbyFor(game);
-  else if (!keepsOpenLobby) {
-    stopPolling();
-    lobby.clear();
-    clearJoinQr();
-    renderLobby();
+  for (const row of document.querySelectorAll('.picker__game')) {
+    row.setAttribute('aria-current', String(row.dataset.gameId === game.gameId && game.available !== false));
   }
 }
 
+/**
+ * Read the games this service hosts.
+ *
+ * The picker must offer what the SERVICE hosts and nothing else, and this is the whole of that
+ * rule: the rows drawn are exactly `manifest.games`. The sentence underneath states the
+ * consequence rather than a list of absent titles — "a game this site shows but this service does
+ * not host cannot have a table" — which is true without this screen having to know which games
+ * those are.
+ */
 async function loadPortfolio() {
   try {
     const r = await fetch(TABLE_SERVICE + '/portfolio', { method: 'GET' });
@@ -705,12 +1146,19 @@ async function loadPortfolio() {
     const manifest = await r.json();
     const games = Array.isArray(manifest.games) ? manifest.games : [];
     renderGames(games);
+    const offered = games.filter((g) => g.available !== false);
     if (!games.length) {
       $('pickerNote').className = 'picker__note warn';
-      $('pickerNote').textContent = 'This table service hosts no games right now.';
-    } else if (!games.some((g) => g.available)) {
+      $('pickerNote').textContent = 'This table service hosts no games, so no table can be opened for it.';
+    } else if (!offered.length) {
       $('pickerNote').className = 'picker__note warn';
       $('pickerNote').textContent = 'No game is switched on at this table service right now.';
+    } else {
+      $('pickerNote').className = 'picker__note';
+      $('pickerNote').textContent = 'Hosted here: '
+        + offered.map((g) => gameLabel(g.gameId)).join(', ')
+        + '. A game this site shows but this service does not host cannot have a table, so it is '
+        + 'not offered and no request is made for it.';
     }
   } catch (e) {
     // The honest failure. An empty or invented selector would look like a working screen
@@ -745,18 +1193,54 @@ function seatEl(seat) {
   return el;
 }
 
+/*
+ * The tournament a table belongs to, ONLY as the table service reported it. There is
+ * no tournament row and no tournament sentence invented here: an unreported
+ * tournament stays a hidden row. This keeps game identity, table identity and
+ * tournament identity as three distinct surfaces instead of one lucky guess.
+ *
+ * MEASURED HONESTY: the deployed lobby contract (LobbyCreateRequest, and both lobby
+ * responses) carries no tournament field, so against today's service this row is
+ * ALWAYS hidden — which is the correct outcome, not a defect. It exists so that a
+ * tournament identity, if the service ever reports one on a table, has its own
+ * surface and can never be confused with the table id or the game.
+ */
+function tournamentLabel(live) {
+  if (!live) return null;
+  if (typeof live.tournament === 'string' && live.tournament.trim() !== '') return live.tournament.trim();
+  if (typeof live.tournamentId === 'string' && live.tournamentId.trim() !== '') return '#' + live.tournamentId.trim();
+  if (Number.isInteger(live.tournamentId) && live.tournamentId > 0) return '#' + live.tournamentId;
+  return null;
+}
+
 function renderLobby() {
   const panel = $('lobby');
   const live = lobby.lobby;
   const failure = lobby.failure;
   if (!live && !failure) {
     panel.hidden = true;
+    document.querySelector('main')?.classList.remove('is-live');
+    refitJoinQr();
     return;
   }
   panel.hidden = false;
+  /*
+   * A table on screen means the lobby panel IS the board, so the placeholder board under it is
+   * taken off. Two sets of facts about one table is what made the details column overflow.
+   */
+  if (live) document.querySelector('main')?.classList.add('is-live');
 
   $('lobbyState').textContent = live ? describeState(live.state) : 'No table opened';
   $('lobbyCode').textContent = lobby.joinCode || '—';
+  $('lobbyTableId').textContent = live && live.lobbyId !== undefined && live.lobbyId !== null
+    ? String(live.lobbyId) : '—';
+  $('lobbyGame').textContent = live
+    ? gameLabel(live.gameId) + ' · rules v' + (live.ruleVersion || '—')
+    : '—';
+  const tournament = tournamentLabel(live);
+  const tournamentRow = $('lobbyTournamentRow');
+  tournamentRow.hidden = !tournament;
+  if (tournament) $('lobbyTournament').textContent = tournament;
 
   const counts = live ? occupancy(live) : null;
   if (counts) {
@@ -789,6 +1273,10 @@ function renderLobby() {
   }
 
   renderCommercial();
+  /* The lobby panel changes the height of the row the join column sits in, so the symbol is
+     re-measured after the panel has been written — and re-measured again in the layout that
+     measurement produces. */
+  refitJoinQr();
 }
 
 /* ---- the commercial panel ----
@@ -957,269 +1445,215 @@ function schedulePolling() {
   }, every);
 }
 
-/**
- * Show the setup modal and return the configuration when the user submits.
- * Returns null if the user cancels.
- */
-async function showSetupModal(game) {
-  return new Promise((resolve) => {
-    const modal = $('setupModal');
-    const form = $('setupForm');
-
-    // Pre-fill from the game's own defaults. The defaults are applied BEFORE the
-    // form is shown and never reset afterwards: resetting a form after writing the
-    // defaults would hand the operator empty fields that look like values.
-    const defaults = GAME_DEFAULTS[game.gameId] || {};
-    $('setupGameType').value = defaults.gameType || 'table';
-    $('setupCapacity').value = defaults.capacity ?? 6;
-    $('setupWaitSeconds').value = defaults.waitSeconds ?? 120;
-    $('setupRuleVersion').value = defaults.ruleVersion ?? '0.0.3';
-    $('setupMachineFill').value = defaults.machineFill ?? 'allowed';
-
-    modal.hidden = false;
-    document.body.style.overflow = 'hidden';
-    const firstField = form.querySelector('select, input');
-    if (firstField && typeof firstField.focus === 'function') firstField.focus();
-
-    let settled = false;
-    /*
-     * Every listener this dialog adds is removed in `close`, and `close` runs exactly
-     * once whichever way the dialog is dismissed.
-     *
-     * Previously the Escape handler removed itself and nothing else did: a dialog
-     * dismissed with Cancel, Submit or the overlay left its document-level keydown
-     * listener attached forever. On a venue screen that is opened and closed all day
-     * by an operator, the listeners accumulate one per opening, and a later Escape
-     * closes a dialog that is not open. The `on*` functions are held here precisely
-     * so `close` has something to detach.
-     */
-    const onSubmit = (event) => {
-      event.preventDefault();
-      const data = new FormData(form);
-      close({
-        gameType: data.get('setupGameType'),
-        capacity: parseInt(data.get('setupCapacity'), 10),
-        waitSeconds: parseInt(data.get('setupWaitSeconds'), 10),
-        ruleVersion: data.get('setupRuleVersion'),
-        machineFill: data.get('setupMachineFill'),
-        economicMode: data.get('setupEconomicMode'),
-        sponsorQrVisibility: MODE_RULES[data.get('setupEconomicMode')]?.sponsor
-          ? data.get('setupSponsorQrVisibility')
-          : null,
-      });
-    };
-    const onCancel = () => close(null);
-    const onOverlay = (event) => {
-      if (event.target === modal) close(null);
-    };
-    const onKey = (event) => {
-      if (event.key !== 'Escape') return;
-      close(null);
-    };
-
-    const close = (result) => {
-      if (settled) return;
-      settled = true;
-      form.removeEventListener('submit', onSubmit);
-      $('btnCloseSetup').removeEventListener('click', onCancel);
-      $('btnCancelSetup').removeEventListener('click', onCancel);
-      modal.removeEventListener('click', onOverlay);
-      document.removeEventListener('keydown', onKey);
-      modal.hidden = true;
-      document.body.style.overflow = '';
-      resolve(result);
-    };
-
-    form.addEventListener('submit', onSubmit);
-    $('btnCloseSetup').addEventListener('click', onCancel);
-    $('btnCancelSetup').addEventListener('click', onCancel);
-    modal.addEventListener('click', onOverlay);
-    document.addEventListener('keydown', onKey);
-  });
-}
-
-/**
- * Reflect the chosen economic class in the setup form.
+/*
+ * ---- ATTACHING THIS DISPLAY TO A TABLE THAT ALREADY EXISTS ----
  *
- * The sponsor visibility control appears only for a class that has a sponsor, and
- * it is not given a value of its own: an absent choice is an absent decision, and
- * the module refuses a sponsor class that has not made one. The radio for a mode
- * that the table service does not offer is disabled rather than hidden, so the room
- * can see that the mode exists here and is not available on this table.
+ * There is exactly ONE way this screen gets a table, and it is a READ. Everything below funnels
+ * into `attachToTable()`, so there is one authority to reason about rather than one per entry
+ * point — the Founder's model needs the display to be able to DISCOVER a table it did not open,
+ * and two discovery mechanisms would be two things to get wrong.
+ *
+ * The four ways a reference reaches this screen, all of them reads of the same route:
+ *
+ *   1. THE ADDRESS IT WAS OPENED WITH  — tv.lastikadi.com/#table=CODE. PRIMARY, because it needs
+ *      no input device at the wall: the reference is carried by the link the screen is configured
+ *      with, and whoever configures the screen does it on a device that HAS a keyboard. The
+ *      fragment is never sent to the host, and the value in it is not a credential (see
+ *      tv/attach.mjs for both arguments in full).
+ *   2. ITS OWN SAVED RECORD — so a screen that reloads, or a kiosk that restarts, re-attaches to
+ *      the table it was showing instead of forgetting it.
+ *   3. THE FORM IN THE PICKER — the FALLBACK, for a screen driven from a keyboard or somebody
+ *      already standing at it. It is not the primary path and its copy says so.
+ *   4. A TABLE REFERENCE ON THE PAIRING APPROVAL — NOT IMPLEMENTED, AND THE REASON IS WRITTEN DOWN
+ *      RATHER THAN LEFT AS A GAP. A screen that is already on the wall cannot be told about a table
+ *      opened afterwards: the service has no route that maps a display to a session. The ONE
+ *      channel it already has from a phone's action to a waiting screen is the approval answer the
+ *      screen polls for, and carrying a reference there is a SERVICE change — one field — which is
+ *      specified in the report beside this change and deliberately NOT faked here with a call site
+ *      for a field nothing sends.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO: RE-CREATE. The object this page calls `lobby` carries only
+ * read members — the client's create, join and start functions are not reachable through it — so a
+ * screen whose table was closed, whose code expired, or whose first load failed CANNOT manufacture
+ * a second table by trying again. That is the failure this shape exists to make impossible rather
+ * than merely unlikely, and it is why the recovery path here is a read and not a retry.
  */
-function syncSetupCommercial(config) {
-  const validation = validateConfiguration(config);
-  const note = $('setupModeNote');
-  for (const radio of document.querySelectorAll('input[name="setupEconomicMode"]')) {
-    const mode = radio.value;
-    // The list of modes comes from the module, not from a literal written here, so
-    // the five classes are the module's five classes.
-    radio.disabled = !ECONOMIC_MODES.includes(mode) || !MODE_RULES[mode];
-  }
-  const chosen = document.querySelector('input[name="setupEconomicMode"]:checked');
-  const sponsorField = $('setupSponsorField');
-  if (!chosen || !MODE_RULES[chosen.value]?.sponsor) {
-    sponsorField.hidden = true;
-  } else {
-    sponsorField.hidden = false;
-    $('setupSponsorQrVisibility').value = 'PRIVATE_OWNER';
-  }
-  if (!validation.ok) {
-    note.textContent = validation.text;
-  } else if (validation.economicMode !== chosen?.value) {
-    note.textContent = `The table service reports this table as ${validation.economicMode}. Whatever is chosen here is a statement about the table this screen is about to open.`;
-  } else {
-    note.textContent = describeEconomicMode(validation.economicMode);
-  }
-}
 
-/**
- * Get a stable TV identifier for lobby binding.
- * Uses a persistent ID stored in localStorage, or generates a new one.
- */
-function getTvId() {
-  const storage = deviceStorage();
-  let tvId = storage && storage.getItem('tvId');
-  if (!tvId) {
-    tvId = 'tv_' + Math.random().toString(36).substring(2, 10);
-    if (storage) storage.setItem('tvId', tvId);
-  }
-  return tvId;
-}
-
-/** Open a table for a game, then keep the roster current. */
-async function openLobbyFor(game) {
-  try {
-    stopPolling();
-    const path = GAME_CLIENTS[game.gameId] || '/play/';
-    clearJoinQr();
-
-    /*
-     * Read the commercial inputs BEFORE the operator is asked anything, so the setup
-     * form can say what this table actually is. Both reads are independent: an
-     * unreadable capability manifest and an unreadable portfolio each leave their own
-     * side absent, and neither one stops the other from being read.
-     */
-    await commercial.loadCapabilities();
-    const commercialRead = await commercial.loadGame(game.gameId);
-    syncSetupCommercial(commercial.configuration);
-    // Render whatever those two answers support, before the dialog takes the room's
-    // attention. A panel that is only drawn after the dialog closes is a panel nobody
-    // sees on the setup step, which is the only step this matters on.
-    renderCommercial();
-
-    // Show setup modal to configure the table before creating the lobby
-    const setup = await showSetupModal(game);
-    if (!setup) {
-      // User cancelled setup
-      renderCommercial();
-      return;
-    }
-
-    /*
-     * The economic class travels with the lobby request under its GOVERNANCE name,
-     * which is the name the configuration hash is computed over. A screen-side alias
-     * would mean a table whose hash and whose class disagree, so the mapping happens
-     * once, here, through the module.
-     */
-    const economicClass = LUGUTU_CLASS[setup.economicMode] ?? null;
-
-    // Create lobby with the configured settings
-    $('pickerNote').className = 'picker__note';
-    $('pickerNote').textContent = 'Opening one stable ' + gameLabel(game.gameId) + ' table…';
-    const result = await lobby.open(game.gameId, setup.capacity, {
-      waitSeconds: setup.waitSeconds,
-      ruleVersion: setup.ruleVersion,
-      gameType: setup.gameType,
-      machineFill: setup.machineFill,
-      tvId: getTvId(),
-      ...(economicClass ? { economicClass } : {}),
-      ...(setup.sponsorQrVisibility ? { sponsorQrVisibility: setup.sponsorQrVisibility } : {}),
-    });
-    renderLobby();
-
-    if (!result.ok) {
-      // Without an issued table code, a generic client link would not prove that a
-      // phone is joining this room. Keep the QR blank and show the service failure.
-      return;
-    }
-
-    const url = joinUrl(lobby.joinCode, path, result.lobby.gameId, result.lobby.ruleVersion);
-    if (url) {
-      drawQr($('qr'), url);
-      $('joinUrl').textContent = url.replace(/^https?:\/\//, '');
-      $('joinLabel').textContent = 'Scan to join this table';
-      $('qr').setAttribute('aria-label', 'Scan to join ' + gameLabel(result.lobby.gameId) + ' table ' + lobby.joinCode);
-      $('venueTag').textContent = gameLabel(result.lobby.gameId) + ' at the table';
-      const storage = deviceStorage();
-      if (storage) storage.setItem('lastikadi.tv.activeLobby', JSON.stringify({
-        joinCode: lobby.joinCode,
-        gameId: result.lobby.gameId,
-        ruleVersion: result.lobby.ruleVersion,
-        clientPath: path,
-      }));
-      $('pickerNote').textContent = result.lobby.gameId + ' · rules v' + result.lobby.ruleVersion
-        + ' · table ' + lobby.joinCode + ' issued by the table service.';
-    } else {
-      clearJoinQr();
-    }
-    // A refused commercial configuration is reported next to the table rather than in
-    // place of it: the table is open and playable, and the mode it was opened under
-    // is still something the room has been told about.
-    if (!commercialRead.ok) renderCommercial();
-    schedulePolling();
-  } catch (error) {
-    stopPolling();
-    clearJoinQr();
-    $('lobby').hidden = true;
-    $('pickerNote').className = 'picker__note warn';
-    $('pickerNote').textContent = error?.name === 'TimeoutError'
-      ? 'The table service took too long to open this table. Try again.'
-      : 'The table could not be opened. Try again; this screen will not invent a join code.';
-    console.error('TV table open failed', error);
-  }
-  }
-
-/** Restore the exact table this display opened; never create a replacement on reload. */
-async function resumeSavedLobby() {
+/** Persist the reference so a reload or a kiosk restart comes back to the same table. */
+function rememberReference(joinCode, gameId, clientPath) {
   const storage = deviceStorage();
   if (!storage) return;
-  let saved;
-  try { saved = JSON.parse(storage.getItem('lastikadi.tv.activeLobby') || 'null'); }
-  catch { storage.removeItem('lastikadi.tv.activeLobby'); return; }
-  if (!saved || typeof saved.joinCode !== 'string') return;
+  const record = savedReference(joinCode, gameId, clientPath);
+  if (record === null) return;
+  try { storage.setItem(ATTACH_STORAGE_KEY, record); } catch { /* a screen that cannot remember still shows the table */ }
+}
 
-  const result = await lobby.resume(saved.joinCode);
-  renderLobby();
+/** Forget a reference the service has disowned, so the screen stops asking about it. */
+function forgetReference() {
+  const storage = deviceStorage();
+  if (!storage) return;
+  try { storage.removeItem(ATTACH_STORAGE_KEY); } catch { /* nothing to clean */ }
+}
+
+/**
+ * Attach to a table by its code, and show it. THE ONLY PATH IN, AND IT IS A READ.
+ *
+ * The code is validated against the SERVICE's own shape BEFORE any request, so an address with a
+ * truncated or mistyped reference is refused with a sentence instead of becoming a request about
+ * a table that cannot exist. A code that passes is handed to `lobby.resume`, whose only network
+ * call is the public `GET /lobby/{joinCode}` on the credential-free reader above.
+ *
+ * `announce` is the sentence shown on success, because the two callers owe the room different
+ * words: an address that was opened with a reference is a screen doing its job, while a code
+ * somebody typed is a person who should be told it worked.
+ */
+async function attachToTable(rawCode, options = {}) {
+  const code = normalizeServiceTableCode(rawCode);
+  if (code === null) {
+    return {
+      ok: false,
+      error: 'That is not a table code. A table code is ten letters and digits, read off the phone '
+        + 'that opened the table.',
+    };
+  }
+  stopPolling();
+  const result = await lobby.resume(code);
   if (!result.ok) {
+    renderLobby();
+    // A code the service does not know is a code this screen must stop asking about; a service
+    // that is merely unreachable is not, because the table may well still be there.
     if (lobby.failure?.id === 'absent' || lobby.failure?.id === 'bad-join-code') {
-      storage.removeItem('lastikadi.tv.activeLobby');
+      forgetReference();
+      clearJoinQr();
     }
-    return;
+    return { ok: false, error: lobby.failure?.text || 'That table could not be shown on this screen.' };
   }
 
   const live = result.lobby;
-  const path = GAME_CLIENTS[live.gameId] || saved.clientPath || '/play/';
-  const url = joinUrl(saved.joinCode, path, live.gameId, live.ruleVersion);
-  if (!url) return;
-  drawQr($('qr'), url);
-  $('joinUrl').textContent = url.replace(/^https?:\/\//, '');
-  $('joinLabel').textContent = 'Scan to join this table';
-  $('qr').setAttribute('aria-label', 'Scan to join ' + gameLabel(live.gameId) + ' table ' + saved.joinCode);
-  $('venueTag').textContent = gameLabel(live.gameId) + ' at table ' + saved.joinCode;
-  $('pickerNote').className = 'picker__note';
-  $('pickerNote').textContent = 'Restored table ' + saved.joinCode + '. Every scan joins this same table.';
+  /*
+   * THE COMMERCIAL INPUTS BELONG TO THE TABLE, SO THEY ARE READ WHEN A TABLE IS SHOWN. They used to
+   * be read at the moment somebody chose a game on this screen, because the panel had to be legible
+   * on the setup step. There is no setup step, and the class, the funds and the sponsor code are
+   * all facts about a TABLE — so they are read here, from the table's own game, and the panel is
+   * drawn as part of showing that table. Both reads are independent, so an unreadable capability
+   * manifest and an unreadable portfolio each leave their own side absent and neither stops the
+   * other.
+   */
+  await commercial.loadCapabilities();
+  await commercial.loadGame(live.gameId);
+  renderLobby();
+
+  const path = GAME_CLIENTS[live.gameId] || options.clientPath || '/play/';
+  // The game, the rules version and the join code all come from the SERVICE's answer, so the QR
+  // drawn here is built from exactly the same three values as the QR on any other screen showing
+  // this table. Two screens cannot disagree, because neither invents any part of it.
+  showJoinQr(code, live.gameId, live.ruleVersion, path,
+    (options.newsText || 'Showing table ' + code + '.')
+      + ' Every scan joins this same table. This screen only shows it.');
+  rememberReference(code, live.gameId, path);
   schedulePolling();
+  return { ok: true, table: { joinCode: code, gameId: live.gameId, ruleVersion: live.ruleVersion } };
 }
 
-// The sponsor visibility control only exists for a class that has a sponsor, so the
-// radio group re-syncs it whenever the class changes rather than at submit time, when
-// the operator would already be looking at the wrong controls.
-for (const radio of document.querySelectorAll('input[name="setupEconomicMode"]')) {
-  radio.addEventListener('change', () => syncSetupCommercial(commercial.configuration));
+/**
+ * The address this screen was opened with, if it carries a table reference.
+ *
+ * Read once at startup and never written back: `readTableReference` is a pure read of a string
+ * and nothing here ever ADDS to the address. A reference that is present but unusable is reported
+ * rather than ignored — somebody pasted a truncated link, and telling them so is the difference
+ * between a misconfigured screen and a screen that looks broken.
+ */
+async function attachFromAddress() {
+  const address = typeof location === 'undefined' ? '' : location.href;
+  const reference = readTableReference(address);
+  if (reference.joinCode === null) {
+    if (reference.problem === 'not-a-service-code') {
+      $('pickerNote').className = 'picker__note warn';
+      $('pickerNote').textContent = 'The table reference in this screen\u2019s address is not a table '
+        + 'code this service could have issued, so nothing was requested. Check the link.';
+    }
+    return { ok: false, error: null };
+  }
+  const result = await attachToTable(reference.joinCode, {
+    newsText: 'Showing the table this screen was opened with.',
+  });
+  if (!result.ok) {
+    $('pickerNote').className = 'picker__note warn';
+    $('pickerNote').textContent = result.error;
+  }
+  return result;
 }
+
+/** Re-attach to the table this screen was last showing. Never opens a replacement. */
+async function attachFromStorage() {
+  const storage = deviceStorage();
+  if (!storage) return { ok: false, error: null };
+  let raw = null;
+  try { raw = storage.getItem(ATTACH_STORAGE_KEY); } catch { return { ok: false, error: null }; }
+  const saved = readSavedReference(raw);
+  if (saved === null) {
+    if (raw !== null) forgetReference();
+    return { ok: false, error: null };
+  }
+  const result = await attachToTable(saved.joinCode, {
+    clientPath: saved.clientPath,
+    newsText: 'Restored table ' + saved.joinCode + '.',
+  });
+  return result;
+}
+
+/**
+ * Start-up order for the reference, and the order is the argument.
+ *
+ * THE ADDRESS WINS OVER THE SAVED RECORD. If somebody has pointed this screen at a table, that is
+ * a newer statement of intent than what the screen remembered, and honouring the record instead
+ * would leave a screen showing the wrong table with no way to say so. The saved record is the
+ * fallback for the ordinary case: a screen that was already showing a table and reloaded.
+ */
+async function attachOnStartup() {
+  const fromAddress = await attachFromAddress();
+  if (fromAddress.ok) return fromAddress;
+  return attachFromStorage();
+}
+
+/*
+ * The fallback form: a person at a screen that has a keyboard, or an operator who is already
+ * standing here. It goes through the SAME `attachToTable` as the address and the saved record, so
+ * it cannot behave differently from them, and it validates against the service's own code shape
+ * before it makes a request.
+ */
+async function resumeByCode() {
+  const input = $('resumeCode');
+  const note = $('resumeNote');
+  note.className = 'resume__note';
+  note.textContent = 'Looking up that table\u2026';
+  const result = await attachToTable(input.value, { newsText: 'Showing the table you entered.' });
+  if (!result.ok) {
+    note.className = 'resume__note warn';
+    note.textContent = result.error;
+    input.focus();
+    return;
+  }
+  note.className = 'resume__note';
+  note.textContent = 'Showing table ' + result.table.joinCode + '. It was already open; nothing new was created.';
+  input.value = '';
+}
+
+$('resumeForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  resumeByCode();
+});
 
 clearJoinQr();
+/* The symbol's size is measured from the space the layout actually gave it, so the fit runs
+   after the layout exists and again on every change to it. 867fa02's rule, kept on the
+   composed screen: the layout lane's whole geometry argument depends on it.
+   6d48955's `clearJoinQr()` stays where it was — this screen draws no QR until a table
+   service has issued a code, and 867fa02's `drawQr($('qr'), JOIN_URL)` startup call is
+   deliberately NOT reintroduced, because a code-less QR at startup is what the product lane
+   removed. */
+watchJoinQr();
+refitJoinQr();
 $('build').textContent = 'tv.lastikadi.com';
 paintPairing();
 stepPairing();
@@ -1227,7 +1661,26 @@ setInterval(stepPairing, 1000);
 tick();
 setInterval(tick, 20000);
 checkService();
-loadPortfolio().then(resumeSavedLobby);
+/*
+ * THE START-UP ORDER IS THE PRODUCT DECISION, so it is written down where it is made.
+ *
+ * `loadPortfolio()` first, because it populates the game list that tells the room what this venue
+ * offers, and it must not be blocked by a table read. Then the reference: the address this screen
+ * was opened with, and failing that the table it remembers.
+ *
+ * NOTHING HERE CREATES. The object this page calls `lobby` does not carry the client's create,
+ * join or start members (see the read-only surface where it is built), so an ordering mistake or a
+ * retry cannot produce a second table — the call does not exist to be made.
+ *
+ * THE ONE THING THIS CANNOT DO, STATED HERE RATHER THAN DISCOVERED LATER: a screen that is
+ * already on the wall cannot be told about a table that is opened afterwards, because the service
+ * has no route that maps a display to a session — the display id this page used to send is
+ * discarded server-side and there is no account-wide lobby listing. Closing that needs ONE service
+ * capability and it is NOT invented here; the proposed contract is in the report beside this
+ * change. What this page CAN do, and does, is pick a table up from anything it already holds: the
+ * address it was opened with, the record it saved, or a code somebody gives it in the form below.
+ */
+loadPortfolio().then(attachOnStartup);
 // Re-check politely: a venue screen left on all day should notice a service
 // coming up without hammering it.
 setInterval(checkService, 60000);

@@ -55,7 +55,7 @@
  */
 
 import { SERVED } from './identity.777b0687.mjs';
-import { hasStarted } from './waiting.8f28fe40.mjs';
+import { hasStarted } from './waiting.9a6335a0.mjs';
 
 /** Where the table service lives. The only origin this client talks to. */
 export const SERVICE_BASE = 'https://api.lastikadi.com';
@@ -600,10 +600,13 @@ export async function joinSharedTable(fetchImpl, base, store, code, game = SERVE
    * The default is the signed-in session's own username — which `signIn` has just created or
    * recovered a few lines above, and which is already the identity this seat is bound to.
    * A caller that supplies a name still wins: a chosen name must not be overwritten by a
-   * generated one. This is deliberately here rather than at the two call sites, so that a
-   * future caller cannot reintroduce the same silent omission.
+   * generated one. But a name that is only whitespace is NOT a chosen name — it is the same
+   * missing name the service refuses, so it falls back to the username rather than sending a
+   * blank seat. This is deliberately here rather than at the two call sites, so that a future
+   * caller cannot reintroduce the same silent omission.
    */
-  const displayName = options.displayName || session.username;
+  const chosen = typeof options.displayName === 'string' ? options.displayName.trim() : '';
+  const displayName = chosen !== '' ? chosen : session.username;
   const seat = await joinLobby(fetchImpl, base, session.token, code, { ...options, displayName });
   if (seat.outcome !== OUTCOMES.TABLE_WAITING) {
     return { ...seat, session, accountId, play: seat.play || null };

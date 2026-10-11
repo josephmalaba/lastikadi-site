@@ -123,6 +123,41 @@ footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border
   .wait{gap:2px}
   .waitlabel{font-size:12px}
 }
+/* The shared "continue in the app" note. The copy of these rules in
+   assets/js/app-prompt.js (STYLE) is what tests/app-prompt.test.mjs compares this
+   block against, and the component may not be styled by an injected <style> because
+   _headers serves `style-src 'self'` with no 'unsafe-inline'. Keep the two in step. */
+[hidden]{display:none}
+.appnote{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--panel2,#263D31);color:var(--cream,#F2E9D6);border-bottom:1px solid var(--line,#3A5346)}
+.appnote[hidden]{display:none}
+.appnote__text{margin:0;flex:1 1 22rem;min-width:0;font-size:14px;line-height:1.45}
+.appnote__label{display:block;color:var(--gold,#D9A93C);font-weight:650}
+.appnote__body{display:block;color:var(--dim,#9FB3A6)}
+.appnote__actions{display:flex;gap:8px;align-items:center}
+.appnote__store{border:1px solid var(--line,#3A5346);border-radius:999px;padding:8px 14px;color:var(--cream,#F2E9D6);text-decoration:none;min-height:var(--tap,2.75rem);display:inline-flex;align-items:center}
+.appnote__dismiss{font:inherit;border:1px solid var(--line,#3A5346);background:transparent;color:var(--cream,#F2E9D6);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:var(--tap,2.75rem)}
+.appnote__dismiss:hover{border-color:var(--gold,#D9A93C)}
+.feedback{border-bottom:1px solid var(--line,#3A5346);background:var(--panel,#1F332A);color:var(--cream,#F2E9D6)}
+.feedback[hidden]{display:none}
+.feedback__summary{cursor:pointer;list-style:none;padding:10px 14px;font-weight:650;min-height:var(--tap,2.75rem);display:flex;align-items:center;gap:8px}
+.feedback__summary::-webkit-details-marker{display:none}
+.feedback__summary::after{content:"+";margin-left:auto;color:var(--gold,#D9A93C)}
+.feedback[open] .feedback__summary::after{content:"\2212"}
+.feedback__body{padding:0 14px 14px;max-width:60ch}
+.feedback__blurb{margin:0 0 10px;color:var(--dim,#9FB3A6);font-size:14px;line-height:1.5}
+.feedback__row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+.feedback__row label{font-size:13px;color:var(--dim,#9FB3A6)}
+.feedback select,.feedback textarea,.feedback input[type=text]{font:inherit;color:var(--cream,#F2E9D6);background:#0B1410;border:1px solid var(--line,#3A5346);border-radius:8px;padding:8px 10px;max-width:100%}
+.feedback textarea{width:100%;min-height:6rem;resize:vertical}
+.feedback__consent{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--dim,#9FB3A6)}
+.feedback__actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.feedback__send{font:inherit;border:1px solid var(--gold,#D9A93C);background:var(--gold,#D9A93C);color:#20170A;border-radius:8px;padding:10px 16px;font-weight:650;cursor:pointer;min-height:var(--tap,2.75rem)}
+.feedback__send[disabled]{opacity:.45;cursor:not-allowed}
+.feedback__status{margin:0;font-size:14px;min-height:1.4em}
+.feedback__status.ok{color:var(--ok,#5AA469)}
+.feedback__status.bad{color:var(--danger,#C4553F)}
+.feedback__status.wait{color:var(--gold,#D9A93C)}
+.feedback__note{margin:8px 0 0;font-size:13px;color:var(--dim,#9FB3A6)}
 </style>
 </head>
 <body>
@@ -134,6 +169,21 @@ footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border
   <button class="pill" id="btn-new">New table</button>
   <button class="pill" id="btn-offline" title="Play a practice game on this phone only. No table is opened and nothing reaches the server.">Practise offline</button>
 </header>
+<!-- The app note is declared here and inserted before this element by
+     /assets/js/app-prompt.a65030b6.js. No store URL is configured, because no build has been
+     released: the module renders no download control at all until one exists. -->
+<div id="appNoteConfig" hidden data-app-note-anchor="appNoteConfig"
+     data-app-note='{"gameId":"kadi","label":"Continue in the LastiKadi app","release":null}'></div>
+<script src="/assets/js/app-prompt.a65030b6.js" defer></script>
+
+<!-- Durable feedback: POST /feedback on the game API. The client is not signed in,
+     and the endpoint is authenticated, so the control says so rather than posting a
+     request that is certain to be refused. It stays collapsed until opened, so it
+     cannot cover the table. -->
+<div id="feedbackConfig" hidden data-feedback-anchor="feedbackConfig"
+     data-feedback='{"gameId":"kadi"}'></div>
+<script src="/assets/js/feedback-client.aca29017.js" defer></script>
+
 <div class="banner" id="banner" hidden></div>
 
 <main>
@@ -168,8 +218,8 @@ import { GameHost, LocalAuthority, NetworkAuthority } from './host.e30228b1.mjs'
 import { SERVED, planForLink, planForRuntime } from './identity.777b0687.mjs';
 import {
   OUTCOMES, PLAY_DESCRIPTOR_GAP, POLL_MS, SERVICE_BASE, joinSharedTable, joinVenue,
-} from './session.67e60056.mjs';
-import { countdown, readCode, waitPlan } from './waiting.8f28fe40.mjs';
+} from './session.2ecc70f4.mjs';
+import { countdown, readCode, waitPlan } from './waiting.9a6335a0.mjs';
 
 /** The offline engine's own seat LABELS. They are not account ids and never leave this phone. */
 const OFFLINE_HUMAN = 1, OFFLINE_MACHINE = 2;
@@ -182,7 +232,7 @@ const OFFLINE_HUMAN = 1, OFFLINE_MACHINE = 2;
  * code (`?game=kadi&v=0.0.3`) and, when it opens a table for a room to share, the code that
  * names that table (`&code=9KP6ARTDQT`); this is the code that reads both, and the rules
  * about what happens when either is absent, unknown or a different version live in
- * ./identity.777b0687.mjs and ./waiting.8f28fe40.mjs so they are tested rather than inspected.
+ * ./identity.777b0687.mjs and ./waiting.9a6335a0.mjs so they are tested rather than inspected.
  *
  * There is deliberately no default game here. A link that names nothing this client can
  * serve deals nothing, and says so. That is the same standard the venue screen already
@@ -537,7 +587,7 @@ async function startWaiting() {
  * address it on the path that advances machine seats: a numeric game id AND the seat list
  * that id is played with. A started lobby publishes a runtime SESSION id instead, where the
  * seat this client does not hold refuses every account and where no command makes a machine
- * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.67e60056.mjs. So a started table with no
+ * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.2ecc70f4.mjs. So a started table with no
  * descriptor is reported as what it is, with the reason, and NOTHING is dealt.
  */
 async function onTableStarted(joined) {

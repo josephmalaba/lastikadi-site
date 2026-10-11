@@ -91,6 +91,19 @@ button.quiet{background:transparent;color:var(--cream);border:1px solid var(--li
 button[hidden]{display:none}
 .sessionline{color:var(--cream);font-size:15px;margin:0 0 4px}
 .hint{color:var(--dim);font-size:14px;margin:10px 0 0}
+/* The address an operator carries to a second screen. Monospaced and wrapping rather than clipped,
+   because it is read character by character and a truncated address is a wrong table. */
+.screenref{display:block;margin:8px 0 0;padding:11px 12px;background:#0B1410;border:1px solid var(--line);
+  border-radius:9px;color:var(--gold-hi);text-decoration:none;word-break:break-all;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px}
+.screenref[hidden]{display:none}
+.screenref:focus{outline:2px solid var(--gold);outline-offset:1px}
+select{width:100%;font:inherit;font-size:17px;color:var(--cream);background:#0B1410;
+  border:1px solid var(--line);border-radius:9px;padding:11px 12px;margin-top:4px}
+select:focus{outline:2px solid var(--gold);outline-offset:1px}
+.controlmessage{background:#0B1410;border:1px solid var(--line);border-radius:10px;
+  padding:11px 13px;font-size:15px;margin:0 0 12px}
+.controlmessage[hidden]{display:none}
 details{margin-top:8px}
 summary{cursor:pointer;color:var(--gold);font-size:15px}
 footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-width:640px}
@@ -164,6 +177,79 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
 
   <button id="approve" hidden>Approve this screen</button>
   <button id="signOut" class="quiet" hidden>Sign out</button>
+
+  <!--
+    THE POST-PAIRING CONTROL PANEL — THE TABLE IS SET UP HERE, ON THE PHONE, AND NOWHERE ELSE.
+
+    A paired screen is operated from the phone, not from across the room. This appears only once
+    the screen is paired. It does three things and deliberately not more:
+
+      1. OPENS A TABLE and chooses its properties — the game, how many seats, and how long the
+         table waits for them. Those are the ONLY properties the table service accepts:
+         `LobbyCreateRequest` is exactly gameId / ruleVersion / capacity / waitSeconds /
+         displayName, so a control for anything else would call a field that does not exist.
+      2. Shows the ADDRESS that puts that table on a screen. A screen never has to be configured
+         by hand: it is given the table's code, and every screen given the same code shows the
+         same table.
+      3. SELECTS a table this account already has, by its code.
+
+    There is deliberately NO list of "my tables", NO tournament control, and NO machine-fill
+    control. The service exposes no account-wide lobby listing, attaches no tournament to a
+    lobby, and has no machine-fill mechanism on purpose — a control for any of them would call
+    something that does not exist. This page offers only what the service can answer.
+  -->
+  <section id="controlPanel" hidden>
+    <h2>Your table</h2>
+    <p class="controlmessage" id="controlMessage" role="status" aria-live="polite" hidden></p>
+
+    <form id="createTableForm" hidden novalidate>
+      <label for="tableGame">Open a new table — game</label>
+      <select id="tableGame" name="gameId"></select>
+      <p class="hint" id="gamesNote"></p>
+
+      <label for="tableSeats">Seats</label>
+      <input id="tableSeats" name="capacity" type="number" inputmode="numeric"
+             min="2" max="16" step="1" value="2" aria-describedby="seatsNote">
+      <p class="hint" id="seatsNote">
+        A table starts at the smallest size the game allows and is widened only by asking here.
+        One pack of cards seats up to twelve; more packs seat a bigger table. A game may declare a
+        smaller range, and the table service will say so if this one does.
+      </p>
+
+      <label for="tableWait">Waiting closes after (seconds)</label>
+      <input id="tableWait" name="waitSeconds" type="number" inputmode="numeric"
+             min="1" max="600" step="10" value="120" aria-describedby="waitNote">
+      <p class="hint" id="waitNote">
+        The table waits for its seats until this deadline. It is the table service's own clock, not
+        this phone's.
+      </p>
+
+      <p class="hint" id="fillNote"></p>
+
+      <button type="submit" id="createTableButton">Open a table for this screen</button>
+    </form>
+
+    <form id="selectTableForm" hidden novalidate>
+      <label for="selectCode">Or select a table you already have — table code</label>
+      <input id="selectCode" name="selectCode" inputmode="text" autocomplete="off" maxlength="14"
+             placeholder="table code" aria-describedby="selectCodeHint">
+      <button type="submit" id="selectTableButton">Select this table</button>
+      <p class="hint" id="selectCodeHint">The ten-character code the screen shows for the table.</p>
+    </form>
+
+    <!--
+      THE ADDRESS FOR A SECOND SCREEN. Shown as its own element, in a copyable form, because this
+      is the string an operator carries to the other display. It is a table's join code inside a
+      fragment, and neither part is a credential: the code is printed on the wall and inside the
+      join QR every phone scans, and the fragment never leaves the browser.
+    -->
+    <p class="hint" id="screenRefNote">
+      To show this table on a screen, open this address on that screen. Any number of screens can
+      show the same table; opening the address joins the table that already exists and never opens
+      a second one.
+    </p>
+    <a class="screenref" id="screenRef" hidden></a>
+  </section>
 </main>
 
 <footer>
@@ -181,6 +267,6 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
   filename — and the filename it names is written into it by the build that emitted it, because
   the module is content-addressed and this file is not.
 -->
-<script type="module" src="./page.63932b06.mjs"></script>
+<script type="module" src="./page.cb519417.mjs"></script>
 </body>
 </html>
