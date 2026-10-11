@@ -109,7 +109,7 @@
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
-/play/identity.777b0687.mjs
+/play/identity.77fde61c.mjs
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
@@ -121,11 +121,11 @@
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
-/play/page.1c6d1415.html
+/play/page.c9eaa463.html
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
-/play/session.2ecc70f4.mjs
+/play/session.3205aa19.mjs
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
@@ -133,7 +133,7 @@
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
-/play/waiting.9a6335a0.mjs
+/play/waiting.63b5b1c4.mjs
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 

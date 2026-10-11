@@ -323,6 +323,33 @@ export function planForLink(search, served = SERVED) {
       servedLabel: label,
       servedRuleVersion: entry.ruleVersion,
       detail: 'asked v' + asked.version + ', serves v' + entry.ruleVersion,
+      /*
+       * *** RETURN-TO-INTENT: THE ONE RESUME THIS REFUSAL CAN HONESTLY OFFER. ***
+       *
+       * A version mismatch is the only refusal here that the person can ACT on. The link named a game
+       * this client does serve and a rules version it does not, so the same table is still reachable
+       * under the version this device actually has. Without this the person is told exactly what is
+       * wrong and given no way to proceed, which is the friction the return-to-intent requirement
+       * exists to remove.
+       *
+       * *** IT IS BUILT ONLY FROM WHAT THE ARRIVING LINK ALREADY CARRIED. *** The game, the table code
+       * and the version are the three parameters the venue's own join link publishes - the same ones
+       * this page was opened with, and the same code that is printed on the wall and encoded in the
+       * join QR every phone scans. Switching the VERSION discloses nothing that was not already in the
+       * address bar. No credential is written, nothing is stored, and nothing outlives the navigation.
+       *
+       * *** AND IT IS null WHEN THERE IS NO TABLE. *** The offer is "open this version FOR THIS TABLE",
+       * so a link that named only a game has no table to return to and gets no control. Offering one
+       * would be inviting the person to open a different table under cover of fixing a version, which
+       * is not what they were doing and not what they would think they had agreed to.
+       *
+       * The refusal itself is unchanged: `ok` stays false and nothing is dealt. This is a way OUT of
+       * the refusal, not a way past it.
+       */
+      openServedFor: asked.code
+        ? './?game=' + encodeURIComponent(asked.game) + '&v=' + encodeURIComponent(entry.ruleVersion)
+          + '&code=' + encodeURIComponent(asked.code)
+        : null,
     });
   }
 

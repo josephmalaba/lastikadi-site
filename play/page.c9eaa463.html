@@ -215,11 +215,11 @@ footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border
 <script src="./kadi-runtime-browser.8e8a5365.js"></script>
 <script type="module">
 import { GameHost, LocalAuthority, NetworkAuthority } from './host.e30228b1.mjs';
-import { SERVED, planForLink, planForRuntime } from './identity.777b0687.mjs';
+import { SERVED, planForLink, planForRuntime } from './identity.77fde61c.mjs';
 import {
   OUTCOMES, PLAY_DESCRIPTOR_GAP, POLL_MS, SERVICE_BASE, joinSharedTable, joinVenue,
-} from './session.2ecc70f4.mjs';
-import { countdown, readCode, waitPlan } from './waiting.9a6335a0.mjs';
+} from './session.3205aa19.mjs';
+import { countdown, readCode, waitPlan } from './waiting.63b5b1c4.mjs';
 
 /** The offline engine's own seat LABELS. They are not account ids and never leave this phone. */
 const OFFLINE_HUMAN = 1, OFFLINE_MACHINE = 2;
@@ -232,7 +232,7 @@ const OFFLINE_HUMAN = 1, OFFLINE_MACHINE = 2;
  * code (`?game=kadi&v=0.0.3`) and, when it opens a table for a room to share, the code that
  * names that table (`&code=9KP6ARTDQT`); this is the code that reads both, and the rules
  * about what happens when either is absent, unknown or a different version live in
- * ./identity.777b0687.mjs and ./waiting.9a6335a0.mjs so they are tested rather than inspected.
+ * ./identity.77fde61c.mjs and ./waiting.63b5b1c4.mjs so they are tested rather than inspected.
  *
  * There is deliberately no default game here. A link that names nothing this client can
  * serve deals nothing, and says so. That is the same standard the venue screen already
@@ -457,6 +457,34 @@ function refuseIdentity(plan) {
   banner.className = 'banner banner-refused';
   banner.textContent = 'NOTICE — this link cannot be opened on this phone. ' + plan.note
     + ' Nothing was dealt and no table was opened.';
+  /*
+   * *** THE ONE WAY OUT OF THIS REFUSAL, AND IT IS OFFERED ONLY WHEN THERE IS ONE. ***
+   *
+   * A version mismatch is the only refusal the person can act on: the link named a game this client
+   * serves and a version it does not, so the SAME table is still reachable under the version this
+   * device actually has. Without this control they are told precisely what is wrong and given nothing
+   * to do about it — told off, rather than helped — which is the friction the return-to-intent
+   * requirement exists to remove.
+   *
+   * It is an ANCHOR, not a scripted transition, and that is deliberate. A navigation boots this page
+   * through exactly the path every link takes, so the resume cannot acquire a second, differently
+   * tested way into the game; and the offer is built from the three parameters the arriving link
+   * already carried, so it discloses nothing new and writes nothing down. `plan.openServedFor` is null
+   * unless the link named a table, because "open this version FOR THIS TABLE" is meaningless without
+   * one — and offering it would invite opening a different table under cover of fixing a version.
+   *
+   * THE REFUSAL IS NOT SOFTENED. `blocked` stays true, `identity.ok` stays false, nothing is dealt,
+   * and every other control on the page stays disabled. This is a way out of the refusal.
+   */
+  if (plan.openServedFor) {
+    const resume = document.createElement('a');
+    resume.id = 'resumeServed';
+    resume.className = 'control';
+    resume.href = plan.openServedFor;
+    resume.textContent = 'Open ' + (plan.servedLabel || plan.game || 'this game')
+      + ' rules v' + plan.servedRuleVersion + ' for this table';
+    $('controls').appendChild(resume);
+  }
   $('btn-new').disabled = true;
   $('btn-new').textContent = 'New table';
   $('btn-offline').disabled = true;
@@ -587,7 +615,7 @@ async function startWaiting() {
  * address it on the path that advances machine seats: a numeric game id AND the seat list
  * that id is played with. A started lobby publishes a runtime SESSION id instead, where the
  * seat this client does not hold refuses every account and where no command makes a machine
- * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.2ecc70f4.mjs. So a started table with no
+ * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.3205aa19.mjs. So a started table with no
  * descriptor is reported as what it is, with the reason, and NOTHING is dealt.
  */
 async function onTableStarted(joined) {

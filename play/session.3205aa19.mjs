@@ -54,8 +54,8 @@
  * so the whole flow — including each refusal — is exercised by tests/session.test.mjs.
  */
 
-import { SERVED } from './identity.777b0687.mjs';
-import { hasStarted } from './waiting.9a6335a0.mjs';
+import { SERVED } from './identity.77fde61c.mjs';
+import { hasStarted } from './waiting.63b5b1c4.mjs';
 
 /** Where the table service lives. The only origin this client talks to. */
 export const SERVICE_BASE = 'https://api.lastikadi.com';

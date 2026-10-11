@@ -36,7 +36,7 @@
  * renders what this returns.
  */
 
-import { readLink } from './identity.777b0687.mjs';
+import { readLink } from './identity.77fde61c.mjs';
 
 /** A trimmed non-empty string, or null. The one reading of "a value that is not there". */
 function textOrNull(value) {
@@ -96,7 +96,7 @@ export const WAIT_TEXT = Object.freeze({
 /**
  * The join code on this link, if it carries one.
  *
- * READ BY THE SAME READER AS `game` AND `v`, deliberately: `readLink()` in ./identity.777b0687.mjs
+ * READ BY THE SAME READER AS `game` AND `v`, deliberately: `readLink()` in ./identity.77fde61c.mjs
  * owns the one set of rules for what a scan may carry, including the two non-leniencies that
  * matter most for a code — a value is never trimmed and `+` is never read as a space. A
  * second reader here would be a second opinion about what the display wrote, and for a join
@@ -121,7 +121,7 @@ function refused(status, reason, extra) {
     ok: false,
     status,
     reason,
-    // A refusal never carries a table to join. Same rule ./identity.777b0687.mjs keeps for a game.
+    // A refusal never carries a table to join. Same rule ./identity.77fde61c.mjs keeps for a game.
     lobbyId: null,
     code: null,
     seats: [],
@@ -143,7 +143,7 @@ function refused(status, reason, extra) {
  * does not understand is a refusal, not a guess — the alternative is a waiting screen that
  * counts down to a number it invented.
  *
- * `served` is the table from ./identity.777b0687.mjs, so a table for a game or a rules version this
+ * `served` is the table from ./identity.77fde61c.mjs, so a table for a game or a rules version this
  * client does not serve is refused HERE, by name, before anything is signed in or sent.
  */
 export function readLobby(body, served = null) {
