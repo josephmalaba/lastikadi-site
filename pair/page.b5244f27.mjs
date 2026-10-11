@@ -391,12 +391,42 @@ ui.createTableForm.addEventListener('submit', async (event) => {
 ui.selectTableForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (state.step !== STEPS.PAIRED || !state.session) return;
-  const code = control.selectCodeInput.value;
-  control.selectCodeInput.value = '';
+  const code = control.selectCodeInput.value;  control.selectCodeInput.value = '';
   const result = await safe(selectTable((url, init) => fetch(url, init), state.session, code));
   state = result.ok ? tableChosen(state, result.table) : controlFailed(state, result.error);
   paint();
 });
+
+/*
+ * *** SHOW PASSWORD, ON BOTH PASSWORD FIELDS. ***
+ *
+ * WCAG 2.2 SC 3.3.8 Understanding recommends "a feature to optionally show a password", and NIST
+ * SP 800-63B-4 section 5.1.1.2 recommends offering the option. The reason is accessibility rather than
+ * convenience: a person who cannot reliably see what they typed, or who is checking a long passphrase
+ * on a phone in a room, is otherwise left guessing, and guessing at a sign-in is how an account gets
+ * locked or abandoned. The approved specification calls this the cheapest accessibility win in the audit.
+ *
+ * *** REVEALING DOES NOT PUT THE SECRET ANYWHERE NEW. *** The value is already in the input; `type` only
+ * decides whether the browser paints it. An input's value is not text content, so the page's own
+ * credential tripwire — which reads the document's TEXT — cannot see it either way, and neither can a
+ * screenshot of the markup. What changes is only what the person holding the phone can read.
+ *
+ * Wired from `data-for` rather than one listener per field, so a password field added later is covered
+ * by adding the attribute and cannot silently ship without the control.
+ */
+for (const reveal of document.querySelectorAll('button.reveal[data-for]')) {
+  const field = byId(reveal.getAttribute('data-for'));
+  if (!field) continue;
+  reveal.addEventListener('click', () => {
+    // The button says what it will DO, so a screen reader announces the action rather than the state.
+    const showing = field.type === 'text';
+    field.type = showing ? 'password' : 'text';
+    reveal.setAttribute('aria-pressed', showing ? 'false' : 'true');
+    reveal.textContent = showing ? 'Show password' : 'Hide password';
+    // Focus stays on the control the person just used, so the toggle is repeatable by keyboard.
+    field.focus();
+  });
+}
 
 /* ---- the clock ---- */
 paint();

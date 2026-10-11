@@ -90,6 +90,16 @@ button:disabled{opacity:.45;cursor:default}
 button.quiet{background:transparent;color:var(--cream);border:1px solid var(--line);font-weight:500}
 button[hidden]{display:none}
 
+/* THE SHOW-PASSWORD CONTROL. Deliberately NOT the primary button shape: it is a small affordance beside
+   the field it belongs to, not an action that submits anything, and a full-width gold button under a
+   password field reads as the thing to press next. It keeps a 44px-ish target because it is used on a
+   phone, one-handed, next to a screen. */
+button.reveal{display:block;width:auto;margin:6px 0 0;padding:6px 12px;font-size:14px;font-weight:500;
+  background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:8px}
+button.reveal:hover{color:var(--cream);border-color:var(--gold)}
+button.reveal:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button.reveal[aria-pressed="true"]{color:var(--gold-hi);border-color:var(--gold)}
+
 /* THE ACCOUNT'S OWN TABLES. Each entry is a full-width button because the whole row is the target —
    this is used on a phone, one-handed, next to a television. The code is monospaced so the digits
    cannot be misread when the owner is comparing it against a screen across the room. */
@@ -179,6 +189,8 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
       <input id="signInName" name="username" autocomplete="username" autocapitalize="none" spellcheck="false">
       <label for="signInPassword">Password</label>
       <input id="signInPassword" name="password" type="password" autocomplete="current-password">
+      <button type="button" class="reveal" id="revealSignInPassword" data-for="signInPassword"
+              aria-pressed="false" aria-controls="signInPassword">Show password</button>
       <button type="submit">Sign in</button>
     </form>
     <details>
@@ -213,6 +225,8 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
         </p>
         <label for="registerPassword">Choose a password (at least 8 characters)</label>
         <input id="registerPassword" name="new-password" type="password" autocomplete="new-password">
+        <button type="button" class="reveal" id="revealRegisterPassword" data-for="registerPassword"
+                aria-pressed="false" aria-controls="registerPassword">Show password</button>
         <p class="hint" id="registerPasswordWhy">
           A sentence is easier to remember than a word, and there are no rules about capitals or symbols.
         </p>
@@ -357,6 +371,6 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
   filename — and the filename it names is written into it by the build that emitted it, because
   the module is content-addressed and this file is not.
 -->
-<script type="module" src="./page.c6339811.mjs"></script>
+<script type="module" src="./page.b5244f27.mjs"></script>
 </body>
 </html>
