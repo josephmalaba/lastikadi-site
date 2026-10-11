@@ -50,6 +50,16 @@ export const MIN_INTERVAL_SECONDS = 2;
 export const MAX_INTERVAL_SECONDS = 60;
 /** The ceiling on the back-off a 429 can push us to, so a screen never stops asking. */
 export const MAX_BACKOFF_SECONDS = 300;
+/**
+ * *** THE FLOOR BETWEEN RE-ASKS AFTER A TRANSIENT FAILURE. ***
+ *
+ * A transient UNAVAILABLE is retried — a screen that gives up on a 502 never pairs until somebody
+ * reloads it — but `pairStep` alone cannot pace that, because a fresh state carries `nextPollAt: 0`
+ * and the gate `nowMs >= nextPollAt` would then be true on every tick. This is the floor that makes
+ * the retry an interval instead of a one-second loop against a service that is already struggling.
+ * It doubles per consecutive failure (see `applyPairOutcome`) up to MAX_BACKOFF_SECONDS.
+ */
+export const RETRY_FLOOR_MS = 5000;
 
 export function deviceCodeUrl() { return API_ORIGIN + '/device/code'; }
 export function deviceTokenUrl() { return API_ORIGIN + '/device/token'; }
@@ -217,13 +227,46 @@ export function pairStep(state, nowMs) {
   }
   // UNAVAILABLE and REFUSED do not retry on their own: a screen that retried a route that is
   // not there would hammer it forever, and one that retried a refusal would ignore the answer.
+  //
+  // *** BUT ONE UNAVAILABLE CAUSE IS NEITHER OF THOSE, AND NOT RETRYING IT BRICKS THE SCREEN. ***
+  // `requestPairCode` reports a 5xx, a non-JSON body, a timeout or a network failure as UNAVAILABLE
+  // too, and those are TRANSIENT: the route is there and the service is merely having trouble.
+  // *** MEASURED 2026-10-11 — THE FIRST LOAD OF tv.lastikadi.com IN A FRESH PROFILE SHOWED
+  // "PAIRING UNAVAILABLE / the answer was not JSON" FROM A 502 DURING A DEPLOY, AND THE FIRST LOAD
+  // ON A BRAND-NEW SCREEN IS THE ONE THAT MATTERS MOST. *** A screen that gives up there never pairs
+  // until a human walks over and reloads it.
+  //
+  // The policy case is detected the same way the wording is: the service says in its own words that
+  // pairing is not offered. Everything else is asked again, with a floor between attempts so a
+  // service that is genuinely down is not hammered.
+  if (state.state === PAIR_STATES.UNAVAILABLE
+    && !/does not offer device pairing/.test(state.detail || '')) {
+    if (nowMs >= (state.nextPollAt || 0)) {
+      return { action: 'request', reason: 'the service could not be reached; asking again' };
+    }
+    return { action: 'wait', reason: 'waiting before asking again' };
+  }
   return { action: 'none', reason: 'the service did not offer a pairing; not retrying' };
 }
 
 /** POST /device/code, with the service's own words when it refuses. */
 export async function requestPairCode(fetchImpl, options = {}) {
   const url = options.url || deviceCodeUrl();
-  const timeoutMs = options.timeoutMs === undefined ? 8000 : options.timeoutMs;
+  /*
+   * *** TWENTY SECONDS, NOT EIGHT, AND THE REASON IS THE COLD START. ***
+   *
+   * This is a ONE-OFF request that decides whether the screen pairs at all, not a poll, so a long
+   * ceiling costs nothing when the service answers quickly and is the difference between working and
+   * not when it does not. MEASURED 2026-10-11: the FIRST load of tv.lastikadi.com in a fresh browser
+   * profile — cold DNS, cold TLS, and a Railway container that may itself be cold — produced
+   * "PAIRING UNAVAILABLE / the answer was not JSON" while five warm loads immediately after all
+   * issued a code. The 8s abort was firing on a request that would have succeeded.
+   *
+   * *** THE FIRST LOAD IS THE ONE THAT MATTERS: it is the load a screen does when it is switched on
+   * in a room for the first time. *** `pollPairToken` keeps its own shorter timeout, because a poll
+   * that is slow should be abandoned and retried rather than held open.
+   */
+  const timeoutMs = options.timeoutMs === undefined ? 20000 : options.timeoutMs;
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
   let timer = null;
   if (controller && timeoutMs > 0) timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -358,8 +401,32 @@ export function applyPairOutcome(state, result, nowMs) {
       return { ...base, state: PAIR_STATES.EXPIRED, userCode: null, deviceCode: null, expiresAt: null, backoffMs: 0 };
     case PAIR_STATES.REQUESTING:
       return { ...base, state: PAIR_STATES.REQUESTING, backoffMs: 0 };
-    default:
-      return { ...base, state: result.outcome };
+    default: {
+      /*
+       * *** A TRANSIENT UNAVAILABLE MUST BE PACED, OR THE RETRY IS A LOOP. ***
+       *
+       * `pairStep` now asks again after a transient UNAVAILABLE, because a screen that gives up on a
+       * 502 never pairs until somebody walks over and reloads it. But this branch — the one that
+       * carries UNAVAILABLE and REFUSED — never set a next attempt time, so `nextPollAt` stayed at 0
+       * and `nowMs >= nextPollAt` was true on every tick. *** THAT IS A ONE-SECOND LOOP AGAINST A
+       * SERVICE THAT IS ALREADY STRUGGLING, AND tests/tv-pair.test.mjs 3.4 CAUGHT IT. ***
+       *
+       * The floor doubles while the service stays unreachable and is capped, so a service that is
+       * down is asked at a widening interval rather than once a second. Every other branch here
+       * already resets `backoffMs` to 0, so the widening resets the moment anything succeeds.
+       *
+       * The POLICY case is left exactly as it was: a service that says it does not offer pairing gets
+       * no retry at all, which is what the test asserts and what the original comment intended.
+       */
+      const transientUnavailable = result.outcome === PAIR_STATES.UNAVAILABLE
+        && !/does not offer device pairing/.test(result.detail || '');
+      if (!transientUnavailable) return { ...base, state: result.outcome };
+      const backoffMs = Math.min(
+        state.backoffMs > 0 ? state.backoffMs * 2 : RETRY_FLOOR_MS,
+        MAX_BACKOFF_SECONDS * 1000);
+      return { ...base, state: result.outcome, backoffMs, nextPollAt: nowMs + backoffMs };
+    }
+
   }
 }
 

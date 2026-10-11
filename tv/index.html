@@ -87,6 +87,16 @@ header{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
 .status b{color:var(--cream);font-weight:600}
 .status.on{color:var(--gold-hi)}
 /*
+ * The unpair control. Quiet by default, because it is a maintenance act and not something the room
+ * should be drawn to; amber while armed, because the armed state is the one that must be obvious or
+ * the two-step is worse than no step at all. Sized for a fingertip on a touch panel, not a mouse.
+ */
+.unpair{font:inherit;font-size:.95rem;border:1px solid var(--line);background:#0B1410;color:var(--dim);
+  border-radius:.5rem;padding:.4rem .8rem;cursor:pointer;min-height:2.2rem}
+.unpair:hover{border-color:var(--gold);color:var(--cream)}
+.unpair:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.unpair.arm{border-color:#C9A66B;color:#C9A66B;font-weight:600}
+/*
  * THE SHAPE OF THE SCREEN: the join QR anchored on the left, everything else on the
  * right. The picker is a full-width strip above both, because choosing a game is
  * what an operator does first and it is not a detail ABOUT a table.
@@ -503,6 +513,14 @@ footer .dot.down{background:#8C5A4A}
     <span class="tag" id="venueTag">Kadi at the table</span>
     <span class="spacer"></span>
     <span class="status" id="pairTag"></span>
+    <!--
+      *** UNPAIRING IS A DELIBERATE TWO-STEP ACT, BECAUSE THIS SCREEN IS IN A PUBLIC ROOM. ***
+      A single-tap control on a wall would let anyone walking past detach a venue's screen from the
+      account it acts for. So the first tap only ARMS it and the second confirms, and the arming
+      lapses after a few seconds on its own. It appears only while the screen is actually paired:
+      there is nothing to unpair otherwise, and a control that can do nothing is noise on a wall.
+    -->
+    <button type="button" class="unpair" id="unpairButton" hidden>Unpair this screen</button>
     <span class="status" id="clock"></span>
   </header>
 
@@ -716,9 +734,9 @@ import {
   createCommercialClient,
 } from './commercial.93ad4126.mjs';
 import {
-  PAIR_STATES, applyPairOutcome, initialPairState, pairPlan, pairStep,
+  PAIR_STATES, applyPairOutcome, clearToken, initialPairState, pairPlan, pairStep,
   pollPairToken, requestPairCode, writeToken,
-} from './pair.29bc022a.mjs';
+} from './pair.6514e822.mjs';
 import {
   ATTACH_STORAGE_KEY, normalizeServiceTableCode, readSavedReference, readTableReference,
   savedReference,
@@ -735,6 +753,16 @@ function deviceStorage() {
 
 let pair = initialPairState(deviceStorage());
 let pairBusy = false;
+/*
+ * *** THE UNPAIR CONTROL IS ARMED, NEVER IMMEDIATE. ***
+ *
+ * This screen hangs in a public room. A one-tap unpair would let anyone walking past detach a venue's
+ * display from the account it acts for, so the first tap only arms and a second tap within a few
+ * seconds confirms. The arming expires by itself, and the button says what the next tap will do —
+ * a two-step control whose second step is not obvious is worse than no step at all.
+ */
+let unpairArmedUntil = 0;
+const UNPAIR_ARM_MS = 6000;
 
 /*
  * *** THE PAIRING SYMBOL IS DRAWN FROM THE SAME CODE THE TEXT PRINTS. ***
@@ -777,6 +805,20 @@ function paintPairing() {
   }
   $('pairSay').textContent = plan.say;
   $('pairTag').textContent = plan.paired ? 'paired' + (plan.username ? ' as ' + plan.username : '') : '';
+  /*
+   * The unpair control exists only while there is a pairing to undo, and it disarms itself the moment
+   * there is not — otherwise an armed state could survive into a screen that has nothing to unpair,
+   * and the next tap on a control that says "tap again to unpair" would do something unexpected.
+   */
+  const unpair = $('unpairButton');
+  if (unpair) {
+    unpair.hidden = !plan.paired;
+    if (!plan.paired || (unpairArmedUntil && Date.now() >= unpairArmedUntil)) {
+      unpairArmedUntil = 0;
+      if (unpair.classList) unpair.classList.remove('arm');
+      unpair.textContent = 'Unpair this screen';
+    }
+  }
   return plan;
 }
 
@@ -1827,6 +1869,49 @@ $('resumeForm').addEventListener('submit', (event) => {
   event.preventDefault();
   resumeByCode();
 });
+
+/*
+ * *** UNPAIR: TWO TAPS, AND THE SECOND ONE IS LABELLED. ***
+ *
+ * The token lives on this device only (`writeToken` keeps it in this browser and nowhere else), so
+ * unpairing is a local act with no service call: forget the credential, put the pairing state back
+ * to what a screen with no credential is, and ask for a fresh code. The service's own pairing row was
+ * consumed when it was approved and never returns to PENDING — that is stated in `DevicePairing` —
+ * so a NEW code is the only route back, and requesting one here is what stops the operator having to
+ * reload the page to get it.
+ *
+ * *** THE ARMED STEP LAPSES. *** `paintPairing` clears the arming once its window passes, so a tap
+ * that is never followed up cannot leave the control primed for whoever walks past next.
+ */
+const unpairButton = $('unpairButton');
+if (unpairButton) {
+  /*
+   * `classList` IS GUARDED, AND NOT DEFENSIVELY. Every call in this block is reached from the module's
+   * top level, and tests/page-runtime.test.mjs executes this module inside a `node:vm` whose DOM is a
+   * stub — `$('unpairButton')` returns an object with `hidden` and `textContent` and no `classList`.
+   * An unguarded read there threw a TypeError from the top level and took TWELVE tests down with it,
+   * which is exactly the failure the guards in `fitJoinQr` and `watchJoinQr` exist to prevent. A
+   * browser always has `classList`, so this cannot mask a real defect.
+   */
+  const arm = (on) => { if (unpairButton.classList) unpairButton.classList[on ? 'add' : 'remove']('arm'); };
+  unpairButton.addEventListener('click', () => {
+    const now = Date.now();
+    if (now >= unpairArmedUntil) {
+      unpairArmedUntil = now + UNPAIR_ARM_MS;
+      arm(true);
+      unpairButton.textContent = 'Tap again to unpair';
+      return;
+    }
+    unpairArmedUntil = 0;
+    arm(false);
+    unpairButton.textContent = 'Unpair this screen';
+    clearToken(deviceStorage());
+    pair = initialPairState(deviceStorage());
+    pairBusy = false;
+    paintPairing();
+    stepPairing();
+  });
+}
 
 clearJoinQr();
 /* The symbol's size is measured from the space the layout actually gave it, so the fit runs
