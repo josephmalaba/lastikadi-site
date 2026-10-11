@@ -411,18 +411,8 @@ footer .dot.down{background:#8C5A4A}
 .resume__button{font:inherit;font-size:1rem;border:1px solid var(--gold);background:#1C2A1F;color:var(--gold-hi);border-radius:.6rem;padding:.55rem 1rem;cursor:pointer}
 .resume__note{margin:0;font-size:.88rem;color:var(--dim);flex-basis:100%}
 .resume__note.warn{color:#C9A66B}
-.pair{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;border:1px solid var(--line);border-radius:.6rem;padding:.45rem .7rem;margin-bottom:.7rem;background:#0B1410}
+.pair{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;border:1px solid var(--line);border-radius:.6rem;padding:.45rem .7rem;margin-bottom:.7rem;background:#0B1410}
 .pair[hidden]{display:none}
-/*
- * The pairing symbol is a FIXED box, not a flexible one. A QR that shrinks with the panel stops
- * being scannable exactly when the panel is small — which is when the owner is most likely to be
- * standing at it with a phone. `image-rendering:pixelated` keeps the module edges hard when the
- * canvas is scaled, because a blurred QR is one the camera has to guess at.
- */
-.pair__qr{flex:0 0 auto;width:6rem;height:6rem;background:#F2E9D6;border-radius:.4rem;padding:.25rem;box-sizing:border-box}
-.pair__qr[hidden]{display:none}
-.pair__qr canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
-.pair__text{display:flex;flex-direction:column;gap:.1rem;min-width:0}
 .pair__word{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
 .pair__word[data-state="warn"]{color:#C9A66B}
 .pair__code{font-size:2.2rem;font-weight:800;letter-spacing:.12em;color:var(--gold-hi);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
@@ -520,24 +510,9 @@ footer .dot.down{background:#8C5A4A}
   <main>
     <div class="picker">
       <div class="pair" id="pairBox" hidden>
-        <!--
-          *** THE PAIRING CODE CAN BE SCANNED, NOT ONLY TYPED. ***
-          The owner standing at this screen is holding a phone. Reading an 8-character code off a
-          wall and thumbing it in is the step most likely to go wrong in a room, and it is the step
-          a camera removes. The symbol encodes the SAME `?code=` address the service itself builds
-          for its verification link, so scanning and typing arrive at exactly the same page in
-          exactly the same state — the QR is a second way to say one thing, never a second thing.
-          It is drawn from `qr.mjs`, the same encoder the join symbol uses: one implementation, so
-          a fix to the encoder fixes both symbols rather than one of them.
-        -->
-        <div class="pair__qr" id="pairQrWrap" hidden>
-          <canvas id="pairQr" width="1" height="1" role="img" aria-label="Scan to pair this screen"></canvas>
-        </div>
-        <div class="pair__text">
-          <span class="pair__word" id="pairWord" data-state="ok">Not paired</span>
-          <span class="pair__code" id="pairCode"></span>
-          <span class="pair__say" id="pairSay"></span>
-        </div>
+        <span class="pair__word" id="pairWord" data-state="ok">Not paired</span>
+        <span class="pair__code" id="pairCode"></span>
+        <span class="pair__say" id="pairSay"></span>
       </div>
       <!--
         THIS IS A DISPLAY, NOT A CHOOSER. The list below names the games the table service
@@ -781,20 +756,25 @@ function paintPairing() {
   $('pairCode').textContent = plan.userCode || '';
   $('pairCode').hidden = !plan.userCode;
   /*
-   * THE SYMBOL FOLLOWS THE CODE, INCLUDING WHEN THE CODE GOES AWAY. A QR left on the glass from a
-   * previous code would send a phone to a page that can approve nothing — the owner would scan,
-   * see a refusal, and conclude the screen is broken rather than that the code expired. So the
-   * canvas is reset to 1x1 and the wrapper hidden whenever there is no live code.
+   * *** THE ANCHOR BOX CARRIES THE PAIRING SYMBOL WHILE THERE IS NO TABLE TO CARRY. ***
+   *
+   * On first launch the largest element on this screen was a cream box with a 1x1 canvas in it and
+   * the words "No table code issued" underneath — the most prominent space on the wall, saying
+   * nothing. It now says the one thing an owner standing in front of it needs: scan this to pair.
+   *
+   * THE GUARD IS THE WHOLE POINT. `showJoinQr`'s own comment states the invariant — the pairing path
+   * must never take a table's QR away — and `joinQrActive` is that invariant as a value. While a
+   * table owns the box, this does nothing at all. Only when no table owns it does pairing use it.
+   *
+   * `showPairingQr` itself refuses to redraw an unchanged code, because `paintPairing` runs on a
+   * one-second interval and repainting a 999px canvas every second to say the same thing is work for
+   * nothing. And when the code goes away the box is CLEARED rather than left holding a stale symbol:
+   * a QR for an expired code sends a phone to a page that can approve nothing, which reads as a
+   * broken screen rather than an expired code.
    */
-  const qrWrap = $('pairQrWrap');
-  if (plan.userCode) {
-    drawQr($('pairQr'), PAIR_LINK_BASE + plan.userCode);
-    qrWrap.hidden = false;
-  } else {
-    const canvas = $('pairQr');
-    canvas.width = 1;
-    canvas.height = 1;
-    qrWrap.hidden = true;
+  if (!joinQrActive) {
+    if (plan.userCode) showPairingQr(plan.userCode);
+    else if (pairingQrDrawn) clearJoinQr();
   }
   $('pairSay').textContent = plan.say;
   $('pairTag').textContent = plan.paired ? 'paired' + (plan.username ? ' as ' + plan.username : '') : '';
@@ -964,6 +944,21 @@ function drawQr(canvas, text) {
   }
 }
 
+/*
+ * *** WHICH SYMBOL OWNS THE ANCHOR BOX. ***
+ *
+ * The box on the left of this screen is the only place a symbol is drawn large enough to scan from
+ * across a room. Until now it was DEAD SPACE on first launch: `clearJoinQr()` left a 1x1 canvas in a
+ * cream box reading "No table code issued" — the largest element on the screen, saying nothing.
+ *
+ * THE INVARIANT THAT KEPT IT EMPTY, AND IS KEPT HERE: `showJoinQr`'s own comment says the pairing
+ * path must never take a table's QR away, so a table's symbol and a pairing symbol must never fight
+ * for this box. `joinQrActive` is that rule as a value: while a TABLE owns the box, pairing does not
+ * touch it. When no table owns it, the pairing symbol uses the space that was doing nothing.
+ */
+let joinQrActive = false;
+let pairingQrDrawn = null;
+
 function clearJoinQr() {
   const canvas = $('qr');
   canvas.width = 1;
@@ -971,6 +966,34 @@ function clearJoinQr() {
   canvas.setAttribute('aria-label', 'No table code issued');
   $('joinLabel').textContent = 'No table code issued';
   $('joinUrl').textContent = '';
+  joinQrActive = false;
+  pairingQrDrawn = null;
+}
+
+/*
+ * *** THE PAIRING SYMBOL, DRAWN INTO THE SPACE THAT WAS ALREADY THERE. ***
+ *
+ * The owner standing at this screen is holding a phone. Reading an 8-character code off a wall and
+ * thumbing it in is the step most likely to go wrong in a room, and it is the step a camera removes.
+ *
+ * It encodes the SAME `?code=` address the service builds for its own verification link, so scanning
+ * and typing arrive at the same page in the same state — a second way to say one thing, never a
+ * second thing. `readCode()` in `pair/pair.mjs` reads `?code=` first and a `#code=` fragment second,
+ * so the phone lands on the pairing page WITH THE CODE ALREADY ENTERED. Drawn from `qr.mjs`, the same
+ * encoder as the join symbol, so a fix to the encoder fixes both.
+ *
+ * It is drawn only when `!joinQrActive`, and it redraws only when the code changes: `paintPairing()`
+ * runs on a one-second interval, and repainting a 999px canvas every second to say the same thing
+ * would be work for nothing.
+ */
+function showPairingQr(userCode) {
+  if (pairingQrDrawn === userCode) return;
+  pairingQrDrawn = userCode;
+  drawQr($('qr'), PAIR_LINK_BASE + userCode);
+  $('qr').setAttribute('aria-label', 'Scan to pair this screen');
+  $('joinLabel').textContent = 'Scan to pair this screen';
+  $('joinUrl').textContent = (PAIR_LINK_BASE + userCode).replace(/^https?:\/\//, '');
+  refitJoinQr();
 }
 
 /*
@@ -985,6 +1008,10 @@ function showJoinQr(joinCode, gameId, ruleVersion, path, newsText) {
     clearJoinQr();
     return;
   }
+  /* A TABLE now owns the anchor box. Pairing must not touch it from here on — that is the invariant
+     the comment above this function has always stated, and it is now a value rather than a promise. */
+  joinQrActive = true;
+  pairingQrDrawn = null;
   drawQr($('qr'), url);
   $('joinUrl').textContent = url.replace(/^https?:\/\//, '');
   $('joinLabel').textContent = 'Scan to join this table';
