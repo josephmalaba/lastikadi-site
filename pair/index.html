@@ -188,6 +188,19 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
         options are not enough: a person who misses one of them cannot tell which they are choosing.
       -->
       <h3 id="createHeading">Create an account</h3>
+      <!--
+        *** THIS LINE EXISTS TO STOP A DEAD END BEFORE IT IS REACHED, NOT TO DECORATE THE FORM. ***
+        Playing at a table gives a person an account without ever asking them to make one, so somebody
+        who has played here may already HAVE a sign-in name they were never told. Without this sentence
+        they discover it the hard way: they fill in this form, submit, and the service answers 409 —
+        "That sign-in name is already taken. Sign in instead." The message is honest and the person is
+        still stuck, because they are now inside the create path being told to use the other one.
+        Saying it HERE, before the fields, points them at sign-in first.
+      -->
+      <p class="hint" id="createExisting">
+        Already have an account from playing at a table? Close this and sign in instead — playing gives
+        you a sign-in name whether or not you ever chose one.
+      </p>
       <form id="registerForm" novalidate>
         <label for="registerName">Choose a sign-in name</label>
         <input id="registerName" name="new-username" autocomplete="username" autocapitalize="none" spellcheck="false">
@@ -262,6 +275,16 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
     <div class="mytables" id="myTables" hidden>
       <h3 id="myTablesTitle">Tables you already have</h3>
       <div class="mytables__list" id="myTablesList" role="list"></div>
+      <!--
+        *** THE TWO ENTRY POINTS LOOK ALIKE AND ARE NOT. *** The list can only ever show tables this
+        account CREATED; a code read off somebody else's screen is how you reach a table that is not
+        yours to list. Without a sentence saying so, an owner who cannot find a table here concludes it
+        is gone — when it is simply not theirs to list. The line names the difference rather than
+        leaving the two controls to be told apart by trying them.
+      -->
+      <p class="hint" id="myTablesScope">
+        Tables you opened. To show a table somebody else set up, use its code.
+      </p>
     </div>
     <p class="hint" id="myTablesNote" role="status" aria-live="polite" hidden></p>
 
@@ -297,7 +320,11 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
       <input id="selectCode" name="selectCode" inputmode="text" autocomplete="off" maxlength="14"
              placeholder="table code" aria-describedby="selectCodeHint">
       <button type="submit" id="selectTableButton">Select this table</button>
-      <p class="hint" id="selectCodeHint">The ten-character code the screen shows for the table.</p>
+      <p class="hint" id="selectCodeHint">
+        The ten-character code the screen shows for the table. A code read off any screen opens that
+        table, whether you created it or not — this is the one entry point that is not limited to your
+        own tables.
+      </p>
     </form>
 
     <!--
