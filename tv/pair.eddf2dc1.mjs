@@ -149,18 +149,46 @@ export function readToken(storage) {
     token,
     username: typeof parsed.username === 'string' && parsed.username.trim() !== '' ? parsed.username.trim() : null,
     /*
-     * The numeric account id, IF the service ever sends one with the approval. It is not in
-     * the contract today, and every route that reads a live game wants exactly this number —
-     * `POST /deckmaster/state` refuses a caller who does not present their own id. It is read
-     * and kept when present, and its absence is reported rather than papered over, because
-     * the alternative is a screen that appears paired and can still read nothing.
+     * *** THE SCREEN'S OWN ACCOUNT ID, AND IT IS IN THE CONTRACT. THIS COMMENT USED TO CLAIM THE
+     * OPPOSITE, SO THE CORRECTION IS RECORDED RATHER THAN THE OLD CLAIM QUIETLY DELETED. ***
+     *
+     * It previously read: "The numeric account id, IF the service ever sends one with the approval.
+     * It is not in the contract today ... the alternative is a screen that appears paired and can
+     * still read nothing." *** THAT WAS WRONG, AND WRONG IN THE EXPENSIVE DIRECTION: it warned of a
+     * defect that does not exist, which is how the next reader loses an afternoon hunting for it. ***
+     *
+     * MEASURED ON PRODUCTION 2026-10-11, the whole chain, end to end:
+     *   * `POST /device/token` answers `{ status, token, username, accountId }` — accountId present.
+     *   * `pollPairToken` maps `payload.playerId ?? payload.accountId`, so the field survives the hop.
+     *   * A real paired venue screen, read back from its own device storage, held
+     *     `{ token, username, playerId: 23, pairedAt }`.
+     * Nothing is missing and nothing needs defaulting.
+     *
+     * *** AN ACCOUNT ID IS NOT A SEAT NUMBER, AND THIS CARRIES THE ACCOUNT ID. *** A lobby seat is a
+     * `LobbySeatRecord` keyed by SEAT NUMBER whose value is an account id, so the two live in
+     * different namespaces and a bare integer is ambiguous between them. Anything reading this field
+     * must treat it as an account.
+     *
+     * Its absence is nevertheless handled rather than ignored: a record written by an older build, or
+     * by a service that did not send one, has no id here and it is reported as null rather than
+     * defaulted to a guess. A WRONG id is worse than a missing one — it would address somebody else's
+     * seat — so the value is only accepted when it is genuinely an integer.
      */
     playerId: Number.isInteger(parsed.playerId) ? parsed.playerId : null,
     pairedAt: Number.isFinite(parsed.pairedAt) ? parsed.pairedAt : null,
   };
 }
 
-/** Keep the credential on this device, and nowhere else. Returns false if it cannot be kept. */
+/**
+ * Keep the credential on this device, and nowhere else. Returns false if it cannot be kept.
+ *
+ * *** `approved.playerId` IS EXPECTED TO ALREADY BE AN ACCOUNT ID. *** This function stores what it
+ * is handed; it does not translate. The translation from the service's `accountId` happens in
+ * `pollPairToken`, which is where the service's vocabulary is dealt with — keeping the mapping in one
+ * place is what stops a second, subtly different one appearing here. If a caller ever hands this
+ * function a raw service payload instead of a poll result, the id would be silently dropped, which is
+ * why a test pins the pair: poll output in, `playerId` on disk out.
+ */
 export function writeToken(storage, approved, nowMs) {
   const token = approved && typeof approved.token === 'string' ? approved.token.trim() : '';
   if (!token) return false;
