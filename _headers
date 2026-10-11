@@ -121,11 +121,11 @@
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
-/play/page.a857d66a.html
+/play/page.61d70cd2.html
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 
-/play/session.43824750.mjs
+/play/session.f974d03e.mjs
   cache-control: public, max-age=31536000, immutable
   x-content-type-options: nosniff
 

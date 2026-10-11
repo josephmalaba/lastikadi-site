@@ -25,6 +25,11 @@ header .spacer{flex:1}
 padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
 .pill:hover{border-color:var(--gold)}
 .pill[disabled]{opacity:.45;cursor:not-allowed}
+/* THE SIGN-OUT SENTENCE. The header is a wrapping flex row, so this takes a full line of its own and
+   sits under the controls rather than beside them — it is an explanation of a limit, not a control, and
+   it must not push the buttons around. Hidden with the button it describes. */
+#signOutNote{flex-basis:100%;margin:0;font-size:12px;line-height:1.45;color:var(--dim)}
+#signOutNote[hidden]{display:none}
 .mode{font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
 main{flex:1;display:flex;flex-direction:column;gap:8px;padding:8px;max-width:1100px;margin:0 auto;width:100%;min-height:0}
 /* NO FLOOR THAT PUSHES CONTENT OFF THE SCREEN. The table and the hand carried min-height
@@ -188,6 +193,21 @@ footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border
   <span class="spacer"></span>
   <button class="pill" id="btn-new">New table</button>
   <button class="pill" id="btn-offline" title="Play a practice game on this phone only. No table is opened and nothing reaches the server.">Practise offline</button>
+  <!--
+    *** A LOCAL SIGN-OUT, AND THE COPY SAYS "THIS BROWSER" BECAUSE THAT IS ALL IT DOES. ***
+    The approved specification requires it ("Both /play and the TV can and must get a local sign-out"),
+    and requires honesty about its limits: clearing a token on a device does NOT invalidate a copy of it
+    elsewhere, and the specification quotes OWASP on exactly that. Calling this "sign out everywhere"
+    would be a security claim this control cannot keep, so it does not make one.
+
+    `aria-describedby` points at the sentence, so the distinction reaches a screen reader and not only a
+    reader who happens to notice the wording.
+  -->
+  <button class="pill" id="btn-signout" hidden aria-describedby="signOutNote">Sign out on this browser</button>
+  <p class="hint" id="signOutNote" hidden>
+    This forgets the account on this browser and nothing else. A copy of the sign-in taken from this
+    device would keep working, so this is not a way to secure an account you think is compromised.
+  </p>
 </header>
 <!-- The app note is declared here and inserted before this element by
      /assets/js/app-prompt.a65030b6.js. No store URL is configured, because no build has been
@@ -270,8 +290,8 @@ footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border
 import { GameHost, LocalAuthority, NetworkAuthority } from './host.e30228b1.mjs';
 import { SERVED, planForLink, planForRuntime } from './identity.77fde61c.mjs';
 import {
-  OUTCOMES, PLAY_DESCRIPTOR_GAP, POLL_MS, SERVICE_BASE, joinSharedTable, joinVenue,
-} from './session.43824750.mjs';
+  OUTCOMES, PLAY_DESCRIPTOR_GAP, POLL_MS, SERVICE_BASE, joinSharedTable, joinVenue, signOutLocally,
+} from './session.f974d03e.mjs';
 import { countdown, readCode, waitPlan } from './waiting.63b5b1c4.mjs';
 
 /** The offline engine's own seat LABELS. They are not account ids and never leave this phone. */
@@ -303,6 +323,18 @@ const store = {
   get: (k) => { try { return localStorage.getItem('venue.' + k); } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem('venue.' + k, String(v)); } catch { /* private mode */ } },
   remove: (k) => { try { localStorage.removeItem('venue.' + k); } catch { /* private mode */ } },
+  // Enumerable, so a sign-out can clear the per-table "watching" choices and not only the identity. The
+  // session module treats this as optional: without it a sign-out still clears every identity key.
+  keys: () => {
+    try {
+      const out = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const full = localStorage.key(i);
+        if (full && full.startsWith('venue.')) out.push(full.slice('venue.'.length));
+      }
+      return out;
+    } catch { return []; }
+  },
 };
 
 const SUITS = {
@@ -351,6 +383,9 @@ let offline = false, blocked = false, waiting = null, waitTimer = null;
  */
 function paintMode() {
   $('surface').textContent = identity.title;
+  // Every state change repaints this, so the control appears and disappears with the session it acts on
+  // rather than with whichever path happened to run last.
+  paintSignOut();
   const banner = $('banner');
   if (offline) {
     $('mode').textContent = 'offline practice · nothing reaches the server';
@@ -695,6 +730,39 @@ async function takeSeat() {
   }
 }
 
+/**
+ * *** THE SIGN-OUT IS OFFERED ONLY WHEN THERE IS SOMETHING TO SIGN OUT OF, AND IT IS HONEST. ***
+ *
+ * Shown when this browser actually holds a session. Offering it otherwise would be a control that does
+ * nothing, which teaches people that controls here do nothing.
+ *
+ * The sentence beside it is part of the control, not decoration: this clears the browser's copy of a
+ * session and does NOT revoke anything at the service, so a token copied off the device would keep
+ * working. The specification is explicit on the point and so is the copy, because a "sign out" that is
+ * read as revocation would leave somebody believing an account was secured when it was not.
+ */
+function paintSignOut() {
+  const button = $('btn-signout');
+  const note = $('signOutNote');
+  if (!button) return;
+  const held = typeof store.get('token') === 'string' && store.get('token') !== '';
+  button.hidden = !held;
+  if (note) note.hidden = !held;
+}
+
+if ($('btn-signout')) {
+  $('btn-signout').addEventListener('click', () => {
+    signOutLocally(store);
+    /*
+     * RELOAD RATHER THAN PATCH THE SCREEN UP. The address bar still names the table, so a fresh boot
+     * lands exactly where the person was — watching it — with the seat panel offered again because there
+     * is no longer an account. Clearing the session in memory instead would mean unpicking the seat, the
+     * roster and every in-flight request by hand, which is more ways to be wrong for no extra benefit.
+     */
+    location.reload();
+  });
+}
+
 if ($('seatConsentGo')) {
   $('seatConsentGo').addEventListener('click', () => { takeSeat(); });
 }
@@ -776,7 +844,7 @@ async function startWaiting() {
  * address it on the path that advances machine seats: a numeric game id AND the seat list
  * that id is played with. A started lobby publishes a runtime SESSION id instead, where the
  * seat this client does not hold refuses every account and where no command makes a machine
- * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.43824750.mjs. So a started table with no
+ * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.f974d03e.mjs. So a started table with no
  * descriptor is reported as what it is, with the reason, and NOTHING is dealt.
  */
 async function onTableStarted(joined) {

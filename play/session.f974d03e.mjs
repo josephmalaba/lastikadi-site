@@ -686,3 +686,57 @@ export async function joinSharedTable(fetchImpl, base, store, code, game = SERVE
   }
   return { ...seat, session, accountId, play: null };
 }
+
+/**
+ * *** A LOCAL SIGN-OUT FOR /play. CLIENT-SIDE, AND HONEST ABOUT WHAT IT IS. ***
+ *
+ * The approved specification lists this under recovery as the half that needs no service:
+ *
+ *     "Client-side, shippable now. Both /play and the TV can and must get a local sign-out, and the TV's
+ *      banner must name whose account it holds. These do not need the service."
+ *
+ * It exists for a reason that this session made concrete: /play used to register an account on every
+ * scan without asking, and it no longer does — an account now exists BECAUSE THE PERSON ASKED FOR ONE.
+ * A thing created on request has to be removable on request, or the asking is not really consent.
+ *
+ * *** WHAT IT IS NOT, SAID PLAINLY, BECAUSE THE COPY DEPENDS ON IT. *** This clears the browser's copy
+ * of a session. It does NOT revoke anything at the service, and the specification is explicit that it
+ * cannot: "deleting a cookie alone does not invalidate a stolen copy of the session ID" (OWASP, quoted
+ * in the same section). A token copied off this device keeps working until the service expires it. So no
+ * surface may describe this as revocation, and the page copy says "on this browser" rather than "sign
+ * out everywhere". Server-side revocation is a service capability, requested separately.
+ *
+ * *** IT CLEARS THE VISIT TRAIL TOO. *** The per-table "this browser chose to watch table X" keys are
+ * not credentials and not identity, and the specification's precedent for the analogous TV action is
+ * "nothing on the screen is deleted". But they are a record of which tables this browser has been to,
+ * and leaving that behind on a sign-out is a privacy residue the person did not agree to keep. So they
+ * go as well — named explicitly rather than swept up by a prefix match, so a future key cannot be
+ * deleted by accident because it happened to start with the same letters.
+ */
+export const SIGN_OUT_KEYS = Object.freeze(['token', 'username', 'accountId']);
+
+/** The key a table's "just watch" choice is remembered under. Kept next to the sign-out that clears it. */
+export function watchKey(code) {
+  return 'watch.' + String(code);
+}
+
+export function signOutLocally(store) {
+  const cleared = [];
+  for (const key of SIGN_OUT_KEYS) {
+    store.remove(key);
+    cleared.push(key);
+  }
+  // The per-table choices, when the store can enumerate its own keys. A store that cannot (the simplest
+  // test double) still gets a complete IDENTITY sign-out; the trail is then reported as not cleared
+  // rather than silently assumed gone.
+  const keys = typeof store.keys === 'function' ? store.keys() : null;
+  if (Array.isArray(keys)) {
+    for (const key of keys) {
+      if (key.startsWith('watch.')) {
+        store.remove(key);
+        cleared.push(key);
+      }
+    }
+  }
+  return { ok: true, cleared, trailCleared: Array.isArray(keys) };
+}
