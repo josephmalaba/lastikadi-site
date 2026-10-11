@@ -165,6 +165,14 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
        and there is no unauthenticated path past it. -->
   <section id="signInPanel" hidden>
     <h2>Sign in</h2>
+    <!--
+      THE CONSEQUENCE IS STATED ON THE SIGN-IN PATH, WHICH IT WAS NOT BEFORE. Signing in here does not
+      merely identify you: it decides which account the room screen will act as. A person who did not
+      know that could approve a stranger's screen with their own account.
+    -->
+    <p class="sessionline" id="sessionConsequence">
+      You need an account to approve this screen. The screen will act as the account you sign in with.
+    </p>
     <p class="sessionline" id="sessionLine">Not signed in</p>
     <form id="signInForm" novalidate>
       <label for="signInName">Sign-in name</label>
@@ -175,18 +183,32 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
     </form>
     <details>
       <summary>I do not have an account</summary>
+      <!--
+        THE CREATE PATH IS A DIFFERENT ACT FROM SIGNING IN, AND IT SAYS SO IN ITS OWN HEADING. Side-by-side
+        options are not enough: a person who misses one of them cannot tell which they are choosing.
+      -->
+      <h3 id="createHeading">Create an account</h3>
       <form id="registerForm" novalidate>
         <label for="registerName">Choose a sign-in name</label>
         <input id="registerName" name="new-username" autocomplete="username" autocapitalize="none" spellcheck="false">
         <label for="registerEmail">Email address</label>
         <input id="registerEmail" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false">
+        <!-- The reason, next to the field that asks for it. Nothing else is collected and nothing else
+             is done with it; a field that does not say why it wants a thing should not ask for it. -->
+        <p class="hint" id="registerEmailWhy">
+          We use this only to get you back into the account if you lose it.
+        </p>
         <label for="registerPassword">Choose a password (at least 8 characters)</label>
         <input id="registerPassword" name="new-password" type="password" autocomplete="new-password">
+        <p class="hint" id="registerPasswordWhy">
+          A sentence is easier to remember than a word, and there are no rules about capitals or symbols.
+        </p>
         <button type="submit">Create the account and sign in</button>
       </form>
       <p class="hint">
         The account you approve with is the account the screen acts as. Create one only if the
-        screen is yours to pair.
+        screen is yours to pair. Creating an account here signs you in; APPROVING THE SCREEN IS STILL
+        A SEPARATE STEP, so you can see what you are agreeing to before it happens.
       </p>
     </details>
   </section>
