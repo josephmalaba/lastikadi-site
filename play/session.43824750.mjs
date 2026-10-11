@@ -593,22 +593,25 @@ export async function joinSharedTable(fetchImpl, base, store, code, game = SERVE
    * That is Founder disposition D1 — "Do NOT silently create a registered, durable user account or
    * password on QR scan" — being broken by the happy path.
    *
-   * *** TWO THINGS ARE NOW REQUIRED BEFORE ANYTHING IS CREATED: A SEAT-WORTHY INTENT, AND A NAME. ***
+   * *** A NAME IS REQUIRED FOR EVERY SEAT, INCLUDING FOR A BROWSER THAT ALREADY HAS AN ACCOUNT. ***
    *
-   *   - A HELD SESSION IS NOT A NEW ACCOUNT. A browser that already holds a token creates nothing by
-   *     joining, so nothing about it needs consent here and its flow is untouched. That is what keeps a
-   *     returning player from being asked the same question on every scan.
-   *   - NO SESSION AND NO NAME IS THE CASE THIS EXISTS FOR. The caller is told to ask, and NOTHING is
-   *     sent: no register, no login, no join. The person can watch the table perfectly well without one.
+   * The first version of this gate asked only when no session was held, on the reasoning that a held
+   * session creates no new account and so needed no consent. That reasoning was right about D1 and WRONG
+   * about the other half of the change: the join still fell back to `session.username`, and for a guest
+   * that string is `venueguest-<suffix>` — so a RETURNING guest still put a generated machine name into
+   * the public roster of a room. The specification has no exception for them: "v1 must not use a
+   * generated username as a display name", full stop, and the display name is defined as PER SEAT and
+   * "set by the player's choice".
    *
-   * The name is REQUIRED rather than optional because it is what the ROOM sees. The approved
-   * specification is unambiguous that a display name must never be derived from "an email address, an
-   * account id, or a generated credential" — requiring it here is what makes that true rather than
-   * merely intended, because no path is left that reaches the roster with a generated name.
+   * The approved decision rules agree: the panel is shown "at most once per browser PER TABLE" — per
+   * table, not per browser — so being asked once for one table says nothing about the next one.
+   *
+   * *** SO THE GATE IS NOW UNCONDITIONAL: NO NAME, NO SEAT. *** A held session still saves the person the
+   * account question (nothing is created, nothing is asked about credentials); what it does not save
+   * them is naming the seat they are about to take, because that name is the one thing the room reads.
    */
   const chosenName = typeof options.displayName === 'string' ? options.displayName.trim() : '';
-  const heldToken = typeof store.get('token') === 'string' && store.get('token') !== '';
-  if (!heldToken && chosenName === '') {
+  if (chosenName === '') {
     return {
       outcome: OUTCOMES.SEAT_NEEDS_CONSENT,
       lobby: resolved.lobby,
@@ -657,16 +660,20 @@ export async function joinSharedTable(fetchImpl, base, store, code, game = SERVE
    * of its own". Measured 2026-10-06: with a name supplied the same route answers 200 and
    * binds the seat to the account.
    *
-   * The default is the signed-in session's own username — which `signIn` has just created or
-   * recovered a few lines above, and which is already the identity this seat is bound to.
-   * A caller that supplies a name still wins: a chosen name must not be overwritten by a
-   * generated one. But a name that is only whitespace is NOT a chosen name — it is the same
-   * missing name the service refuses, so it falls back to the username rather than sending a
-   * blank seat. This is deliberately here rather than at the two call sites, so that a future
-   * caller cannot reintroduce the same silent omission.
+   * *** THE FALLBACK TO `session.username` IS GONE, AND THAT IS THE POINT OF THIS LINE. ***
+   *
+   * It used to read `chosen !== '' ? chosen : session.username`, and that default was the defect: for a
+   * guest, `session.username` is `venueguest-<suffix>`, so a seat nobody named ended up carrying a
+   * generated machine name into the room's roster. The approved specification forbids exactly that — a
+   * display name "must never be derived from an email address, an account id, or a generated
+   * credential".
+   *
+   * The consent gate above now REFUSES to reach this line without a chosen name, so the fallback could
+   * only ever have been dead code. Dead code that reinstates a defect the moment the gate changes is
+   * worse than no code, so it is removed rather than left as a safety net: there is no net, and a future
+   * caller cannot quietly re-acquire one. `chosenName` is the same value the gate approved.
    */
-  const chosen = typeof options.displayName === 'string' ? options.displayName.trim() : '';
-  const displayName = chosen !== '' ? chosen : session.username;
+  const displayName = chosenName;
   const seat = await joinLobby(fetchImpl, base, session.token, code, { ...options, displayName });
   if (seat.outcome !== OUTCOMES.TABLE_WAITING) {
     return { ...seat, session, accountId, play: seat.play || null };

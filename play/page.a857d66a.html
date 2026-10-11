@@ -271,7 +271,7 @@ import { GameHost, LocalAuthority, NetworkAuthority } from './host.e30228b1.mjs'
 import { SERVED, planForLink, planForRuntime } from './identity.77fde61c.mjs';
 import {
   OUTCOMES, PLAY_DESCRIPTOR_GAP, POLL_MS, SERVICE_BASE, joinSharedTable, joinVenue,
-} from './session.2aee73c1.mjs';
+} from './session.43824750.mjs';
 import { countdown, readCode, waitPlan } from './waiting.63b5b1c4.mjs';
 
 /** The offline engine's own seat LABELS. They are not account ids and never leave this phone. */
@@ -615,6 +615,19 @@ function stopWaiting() {
  * arithmetic on the same field.
  */
 /*
+ * *** THE NAME THIS BROWSER CHOSE FOR ITS SEAT, HELD FOR THE REST OF THE SESSION. ***
+ *
+ * Without this, naming a seat is a loop: `takeSeat()` joins WITH the name and then calls
+ * `startWaiting()`, which would join again WITHOUT one — the gate would return `SEAT_NEEDS_CONSENT` and
+ * the panel the person just answered would re-appear. The name is a decision about THIS seat, not a
+ * credential, so it is held in memory for the life of the document and written nowhere.
+ *
+ * A page reload legitimately asks again: the panel is specified as "at most once per browser per table",
+ * and a fresh document is a fresh question. Nothing here persists, so nothing can go stale.
+ */
+let seatName = null;
+
+/*
  * *** THE SEAT CONSENT PANEL: ASK ONCE PER BROWSER PER TABLE, AND MAKE "NO" STICK. ***
  *
  * The approved decision rules are three, and each is a line of code rather than an intention:
@@ -669,6 +682,8 @@ async function takeSeat() {
     const joined = await joinSharedTable(fetch.bind(globalThis), SERVICE_BASE, store, scannedCode,
       SERVED[identity.game], { displayName: chosen });
     if (joined.outcome === OUTCOMES.TABLE_WAITING || joined.outcome === OUTCOMES.TABLE_STARTED_UNPLAYABLE) {
+      // Remembered, so the re-entry below and every later poll carry the SAME name the person chose.
+      seatName = chosen;
       const panel = $('seatConsent');
       if (panel) panel.hidden = true;
       await startWaiting();
@@ -697,7 +712,7 @@ async function startWaiting() {
   offline = false; blocked = false; table = null; host = null; authority = null; view = null;
   $('btn-new').disabled = true;
 
-  const joined = await joinSharedTable(fetch.bind(globalThis), SERVICE_BASE, store, scannedCode, SERVED[identity.game]);
+  const joined = await joinSharedTable(fetch.bind(globalThis), SERVICE_BASE, store, scannedCode, SERVED[identity.game], seatName ? { displayName: seatName } : {});
   if (joined.outcome === OUTCOMES.CODE_UNKNOWN) {
     // NOT practice, and not an outage: the link named a table and the service does not know
     // it. The refusal goes through the identity path so there is exactly one way a screen
@@ -736,7 +751,7 @@ async function startWaiting() {
   if (needsConsent) paintSeatConsent();
 
   const poll = async () => {
-    const again = await joinSharedTable(fetch.bind(globalThis), SERVICE_BASE, store, scannedCode, SERVED[identity.game]);
+    const again = await joinSharedTable(fetch.bind(globalThis), SERVICE_BASE, store, scannedCode, SERVED[identity.game], seatName ? { displayName: seatName } : {});
     if (again.lobby) last = again.lobby;
     draw();
     if (again.outcome === OUTCOMES.TABLE_STARTED_UNPLAYABLE || (last && last.state === 'LIVE')) {
@@ -761,7 +776,7 @@ async function startWaiting() {
  * address it on the path that advances machine seats: a numeric game id AND the seat list
  * that id is played with. A started lobby publishes a runtime SESSION id instead, where the
  * seat this client does not hold refuses every account and where no command makes a machine
- * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.2aee73c1.mjs. So a started table with no
+ * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.43824750.mjs. So a started table with no
  * descriptor is reported as what it is, with the reason, and NOTHING is dealt.
  */
 async function onTableStarted(joined) {
