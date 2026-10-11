@@ -2,7 +2,7 @@
  * pair/page.mjs — the wiring for the page a phone opens to approve a screen.
  *
  * THIS FILE DECIDES NOTHING. Every decision — what the code is, whether a session is held,
- * what a service answer means, what may be shown — lives in `./pair.8be67edf.mjs` and is tested there
+ * what a service answer means, what may be shown — lives in `./pair.93a930c9.mjs` and is tested there
  * without a browser. This file contributes the DOM lookups, the event listeners, the clock and
  * `fetch`, and nothing else.
  *
@@ -22,10 +22,10 @@
 import {
   DEFAULT_SEATS, DEFAULT_WAIT_SECONDS, FILL_EMPTY_SEATS_NOTE, MAX_WAIT_SECONDS, MIN_WAIT_SECONDS,
   STEPS, TABLE_SEATS_CEILING, TABLE_SEATS_FLOOR, approved, approveCode, createTable, failed,
-  gamesLoaded, initialState, listGames, looksLikeCredential, plan, readCode, registerAccount, render,
-  seatsBoundsFor, selectTable, signIn, signedOut, tableChosen, controlFailed, withCode,
-  withSession, working,
-} from './pair.8be67edf.mjs';
+  gamesLoaded, initialState, listGames, listMyTables, looksLikeCredential, plan, readCode,
+  registerAccount, render, seatsBoundsFor, selectTable, signIn, signedOut, tableChosen,
+  controlFailed, withCode, withSession, working,
+} from './pair.93a930c9.mjs';
 
 const byId = (id) => document.getElementById(id);
 
@@ -43,6 +43,8 @@ const ui = {
   controlMessage: byId('controlMessage'),
   createTableForm: byId('createTableForm'),
   selectTableForm: byId('selectTableForm'),
+  myTables: byId('myTables'),
+  myTablesNote: byId('myTablesNote'),
   screenRef: byId('screenRef'),
 };
 
@@ -55,6 +57,7 @@ const control = {
   seatsInput: byId('tableSeats'),
   waitInput: byId('tableWait'),
   createButton: byId('createTableButton'),
+  myTablesList: byId('myTablesList'),
   selectCodeInput: byId('selectCode'),
   selectButton: byId('selectTableButton'),
 };
@@ -113,8 +116,98 @@ byId('fillNote').textContent = FILL_EMPTY_SEATS_NOTE;
 
 let state = initialState(readCode(location.href), Date.now());
 
+/*
+ * *** THE LIST OF THE ACCOUNT'S TABLES IS LOADED WHEN THE PANEL OPENS, NOT WHEN THE PAGE LOADS. ***
+ *
+ * `listMyTables` needs a session and refuses without one — deliberately, because a request this page
+ * knows must fail is a request it does not make. On first paint there is no session, so the fetch
+ * would be a guaranteed 401 dressed up as a feature.
+ *
+ * `panelWasOpen` makes it a TRANSITION rather than a tick: `paint()` runs once a second, and a list
+ * re-fetched every second would be a request per second per phone in the room for a fact that changes
+ * only when the owner opens a table.
+ */
+let panelWasOpen = false;
+let myTablesLoaded = false;
+let myTablesBusy = false;
+
 function paint() {
-  render(document, ui, plan(state, Date.now()));
+  const planData = render(document, ui, plan(state, Date.now()));
+  const open = Boolean(planData && planData.canControl);
+  if (open && !panelWasOpen) loadMyTables();
+  // Leaving the panel forgets that it was loaded, so signing back in fetches the list again rather
+  // than showing what a previous session happened to see.
+  if (!open) myTablesLoaded = false;
+  panelWasOpen = open;
+}
+
+/**
+ * *** AN EMPTY LIST, A REFUSED LIST AND A FAILED LIST ARE SAID DIFFERENTLY, AND ALL THREE ARE SAID. ***
+ *
+ * "You have no tables", "the service would not list them for you" and "the service could not be
+ * reached" are three different facts. A page that shows one blank space for all three sends the owner
+ * to create a table they may already have, or leaves them reloading a page that is working correctly.
+ * Silence is the worst of the three: the panel then looks broken rather than empty.
+ */
+async function loadMyTables() {
+  if (myTablesBusy || myTablesLoaded) return;
+  if (state.step !== STEPS.PAIRED || !state.session) return;
+  myTablesBusy = true;
+  const result = await safe(listMyTables((url, init) => fetch(url, init), state.session));
+  myTablesBusy = false;
+  myTablesLoaded = true;
+  renderMyTables(result);
+}
+
+/** Build the list from the service's answer, and only from it. Nothing here is cached or indexed. */
+function renderMyTables(result) {
+  const list = control.myTablesList;
+  if (!list) return;
+  const note = ui.myTablesNote;
+  const tables = result && result.ok && Array.isArray(result.tables) ? result.tables : [];
+  list.textContent = '';
+  ui.myTables.hidden = tables.length === 0;
+  if (result && !result.ok) {
+    note.textContent = result.error || 'Your tables could not be listed.';
+    note.hidden = false;
+  } else if (tables.length === 0) {
+    note.textContent = 'You have no tables yet. Open one below and it will appear here.';
+    note.hidden = false;
+  } else {
+    note.textContent = '';
+    note.hidden = true;
+  }
+  for (const table of tables) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    const game = document.createElement('span');
+    game.className = 'mt__game';
+    game.textContent = table.gameId;
+    const code = document.createElement('span');
+    code.className = 'mt__code';
+    code.textContent = '  ' + table.joinCode;
+    const meta = document.createElement('span');
+    meta.className = 'mt__meta';
+    meta.textContent = '  ' + (table.state || '') + (table.capacity ? ' \u00b7 ' + table.capacity + ' seats' : '');
+    button.appendChild(game);
+    button.appendChild(code);
+    button.appendChild(meta);
+    button.addEventListener('click', () => chooseExistingTable(table.joinCode));
+    list.appendChild(button);
+  }
+}
+
+/*
+ * PICKING FROM THE LIST TAKES THE SAME ROAD AS TYPING THE CODE, ON PURPOSE. It calls `selectTable`,
+ * so the service's answer is what gets shown and the second-screen address is built by the same code.
+ * The list is a shortcut to a code and never a second way to resolve a table — if it resolved tables
+ * itself there would be two answers to the same question and one of them would eventually be wrong.
+ */
+async function chooseExistingTable(joinCode) {
+  if (state.step !== STEPS.PAIRED || !state.session) return;
+  const result = await safe(selectTable((url, init) => fetch(url, init), state.session, joinCode));
+  state = result.ok ? tableChosen(state, result.table) : controlFailed(state, result.error);
+  paint();
 }
 
 /** A thrown request is still a sentence on the page: nobody is ever left with a spinner. */
@@ -284,6 +377,15 @@ ui.createTableForm.addEventListener('submit', async (event) => {
   }));
   state = result.ok ? tableChosen(state, result.table) : controlFailed(state, result.error);
   paint();
+  /*
+   * THE NEW TABLE BELONGS IN THE LIST IMMEDIATELY. The panel is already open, so `paint` will not see
+   * a transition and will not fetch on its own — and a list that omits the table the owner just
+   * created is a list that looks wrong at exactly the moment they are looking at it.
+   */
+  if (result.ok) {
+    myTablesLoaded = false;
+    loadMyTables();
+  }
 });
 
 ui.selectTableForm.addEventListener('submit', async (event) => {

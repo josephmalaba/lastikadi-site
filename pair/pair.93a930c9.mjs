@@ -77,12 +77,22 @@ export const ROUTES = Object.freeze({
   // The post-pairing control surface. A paired screen is operated from the phone, so the
   // phone opens a table through the same service the game client uses, and resolves an
   // existing table by its join code. These are exactly the table routes the deployed service
-  // exposes to a non-operator account: `POST /lobby` (create, auth) and the public
-  // `GET /lobby/{joinCode}` (resolve, the one open lobby route — its path is ROUTES.lobby plus
-  // the code). The service has NO account-wide lobby listing and NO tournament field on a
-  // lobby, so this page offers neither; a control that called a route the service does not
-  // serve would be a control that always failed. Nothing here can touch a device credential
-  // (see FORBIDDEN_ROUTES).
+  // exposes to a non-operator account: `POST /lobby` (create, auth), `GET /lobby` (THE
+  // ACCOUNT'S OWN TABLES, auth) and the public `GET /lobby/{joinCode}` (resolve, the one open
+  // lobby route — its path is ROUTES.lobby plus the code).
+  //
+  // *** THE LISTING IS THE COLLECTION PATH, AND THAT IS NOT AN ARBITRARY CHOICE. *** It was
+  // briefly going to be `/lobby/mine`, which would have been WRONG: SecurityConfig opens
+  // exactly one lobby route to the public, `GET /lobby/*` — a single path segment — so that a
+  // phone can resolve a code before it has an account. A listing one segment deeper would have
+  // matched that pattern, been PUBLIC, and left the public resolver trying to resolve the
+  // literal string "mine" as a join code. Measured against production: `GET /lobby/mine`
+  // answers `{"error":"Unknown or expired join code"}` to an unauthenticated caller, which is
+  // exactly that collision. `GET /lobby` has no second segment, so it falls through to
+  // `anyRequest().authenticated()` and answers 401. The service still has NO tournament field
+  // on a lobby and NO machine-fill control, so this page still offers neither; a control that
+  // called a route the service does not serve would be a control that always failed. Nothing
+  // here can touch a device credential (see FORBIDDEN_ROUTES).
   portfolio: '/portfolio',
   lobby: '/lobby',
 });
@@ -608,6 +618,67 @@ export async function selectTable(fetchImpl, session, rawCode) {
     },
     error: null,
   };
+}
+
+/* ============================================================================================
+ * THE TABLES THIS ACCOUNT ALREADY HAS
+ * ============================================================================================
+ */
+
+/**
+ * List the tables THIS account already has. GET /lobby (authenticated).
+ *
+ * WHY IT EXISTS. The page could previously offer one way to reach an existing table: type its code.
+ * A code is something you read off a wall, not something you remember, so an owner who closed the tab
+ * a table was created in had no route back to it. This is that route.
+ *
+ * *** IT ANSWERS FOR THE SESSION AND FOR NOBODY ELSE, AND THAT IS THE SERVICE'S JOB, NOT THIS
+ * FUNCTION'S. *** The endpoint takes the account id from the authenticated principal; this sends the
+ * session token and nothing else. There is deliberately no account parameter here to get wrong.
+ *
+ * A 401/403 is reported as a refusal rather than as an empty list, because "the service would not
+ * answer for you" and "you have no tables" are different facts and a UI that conflates them tells the
+ * user to create a table they may already have.
+ *
+ * Entries the service did not shape properly are DROPPED rather than rendered half-built. An entry
+ * without a code cannot be selected, and offering a button that cannot work is worse than offering
+ * nothing: the owner would tap it and learn nothing about why.
+ */
+export async function listMyTables(fetchImpl, session) {
+  if (!usableSession(session)) {
+    return { ok: false, tables: [], error: 'Sign in first — your tables belong to your account.' };
+  }
+  const result = await call(fetchImpl, 'GET', ROUTES.lobby, { token: session.token });
+  if (result.status === 401 || result.status === 403) {
+    return {
+      ok: false, tables: [],
+      error: 'The service would not list tables for this session. Sign in again.',
+    };
+  }
+  if (!result.ok || !result.body || typeof result.body !== 'object') {
+    return { ok: false, tables: [], error: controlError(result, 'The service did not list your tables') };
+  }
+  if (!Array.isArray(result.body.tables)) {
+    return {
+      ok: false, tables: [],
+      error: 'The service answered without a list of tables, so none is shown.',
+    };
+  }
+  const tables = [];
+  for (const entry of result.body.tables) {
+    if (!entry || typeof entry !== 'object') continue;
+    if (typeof entry.joinCode !== 'string' || entry.joinCode === '') continue;
+    if (typeof entry.gameId !== 'string' || entry.gameId === '') continue;
+    tables.push({
+      joinCode: entry.joinCode,
+      gameId: entry.gameId,
+      ruleVersion: typeof entry.ruleVersion === 'string' ? entry.ruleVersion : '',
+      state: typeof entry.state === 'string' ? entry.state : '',
+      lobbyId: entry.lobbyId === undefined || entry.lobbyId === null ? null : String(entry.lobbyId),
+      capacity: Number.isInteger(entry.capacity) ? entry.capacity : null,
+    });
+  }
+  return { ok: true, tables, error: null };
 }
 
 /* ============================================================================================

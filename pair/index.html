@@ -89,6 +89,22 @@ button{font:inherit;font-weight:650;border:0;border-radius:10px;padding:13px 18p
 button:disabled{opacity:.45;cursor:default}
 button.quiet{background:transparent;color:var(--cream);border:1px solid var(--line);font-weight:500}
 button[hidden]{display:none}
+
+/* THE ACCOUNT'S OWN TABLES. Each entry is a full-width button because the whole row is the target —
+   this is used on a phone, one-handed, next to a television. The code is monospaced so the digits
+   cannot be misread when the owner is comparing it against a screen across the room. */
+.mytables{margin:4px 0 10px}
+.mytables[hidden]{display:none}
+.mytables h3{margin:0 0 6px;font-size:14px;color:var(--dim);font-weight:650}
+.mytables__list{display:flex;flex-direction:column;gap:8px}
+.mytables__list button{background:#0B1410;color:var(--cream);border:1px solid var(--line);
+  font-weight:500;text-align:left;margin-top:0;padding:11px 13px}
+.mytables__list button:hover{border-color:var(--gold)}
+.mytables__list button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.mytables__list .mt__game{color:var(--gold-hi);font-weight:650}
+.mytables__list .mt__code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  letter-spacing:.1em;font-size:15px}
+.mytables__list .mt__meta{color:var(--dim);font-size:13px}
 .sessionline{color:var(--cream);font-size:15px;margin:0 0 4px}
 .hint{color:var(--dim);font-size:14px;margin:10px 0 0}
 /* The address an operator carries to a second screen. Monospaced and wrapping rather than clipped,
@@ -191,16 +207,41 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
       2. Shows the ADDRESS that puts that table on a screen. A screen never has to be configured
          by hand: it is given the table's code, and every screen given the same code shows the
          same table.
-      3. SELECTS a table this account already has, by its code.
+      3. SELECTS a table this account already has — EITHER from a list of the tables the account
+         ALREADY HAS, or by a code typed off a screen. Both arrive at the same place.
 
-    There is deliberately NO list of "my tables", NO tournament control, and NO machine-fill
-    control. The service exposes no account-wide lobby listing, attaches no tournament to a
-    lobby, and has no machine-fill mechanism on purpose — a control for any of them would call
-    something that does not exist. This page offers only what the service can answer.
+    there is deliberately NO tournament control and NO machine-fill control. The service attaches no
+    tournament to a lobby and has no machine-fill mechanism on purpose — a control for either would
+    call something that does not exist. This page offers only what the service can answer.
+
+    *** THE LIST OF "MY TABLES" USED TO BE IN THAT CATEGORY, AND THIS NOTE IS ADDED RATHER THAN THE
+    OLD CLAIM SILENTLY DELETED, SO THE CHANGE IS VISIBLE. *** It was true until recently: the service
+    published only four lobby routes and the sole read was the public `GET /lobby/{joinCode}`, which
+    needs a code you already hold — and a code is something read off a wall, not something remembered.
+    An owner who closed the tab a table was created in had no way back to it. `GET /lobby` now answers
+    for the authenticated caller and lists the tables that account created; `host_account_id` was
+    always on the row ("the account that created the lobby"), and only the query was missing.
+
+    *** AND THE CODE BOX STAYS, BECAUSE THE LIST IS NOT A REPLACEMENT FOR IT. *** The list can only
+    ever show tables this account CREATED. A code read off somebody else's screen is how you reach a
+    table that is not yours to list, and it remains the only way to reach one. Two ways in, two
+    different sets of tables.
   -->
   <section id="controlPanel" hidden>
     <h2>Your table</h2>
     <p class="controlmessage" id="controlMessage" role="status" aria-live="polite" hidden></p>
+
+    <!--
+      THE TABLES THIS ACCOUNT ALREADY HAS, as buttons. Not a table of links: every entry does the
+      same single thing — select that table — and a grid of links that all behave identically is a
+      list of buttons wearing a costume. Built from the service's answer every time and never from a
+      stored index, because this page keeps no index of anything.
+    -->
+    <div class="mytables" id="myTables" hidden>
+      <h3 id="myTablesTitle">Tables you already have</h3>
+      <div class="mytables__list" id="myTablesList" role="list"></div>
+    </div>
+    <p class="hint" id="myTablesNote" role="status" aria-live="polite" hidden></p>
 
     <form id="createTableForm" hidden novalidate>
       <label for="tableGame">Open a new table — game</label>
@@ -267,6 +308,6 @@ footer{margin-top:22px;color:var(--dim);font-size:13px;text-align:center;max-wid
   filename — and the filename it names is written into it by the build that emitted it, because
   the module is content-addressed and this file is not.
 -->
-<script type="module" src="./page.cb519417.mjs"></script>
+<script type="module" src="./page.c6339811.mjs"></script>
 </body>
 </html>
