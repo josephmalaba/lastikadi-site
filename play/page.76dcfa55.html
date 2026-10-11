@@ -291,7 +291,8 @@ import { GameHost, LocalAuthority, NetworkAuthority } from './host.e30228b1.mjs'
 import { SERVED, planForLink, planForRuntime } from './identity.77fde61c.mjs';
 import {
   OUTCOMES, PLAY_DESCRIPTOR_GAP, POLL_MS, SERVICE_BASE, joinSharedTable, joinVenue, signOutLocally,
-} from './session.f974d03e.mjs';
+  sealStore,
+} from './session.8ace9e13.mjs';
 import { countdown, readCode, waitPlan } from './waiting.63b5b1c4.mjs';
 
 /** The offline engine's own seat LABELS. They are not account ids and never leave this phone. */
@@ -752,13 +753,25 @@ function paintSignOut() {
 
 if ($('btn-signout')) {
   $('btn-signout').addEventListener('click', () => {
-    signOutLocally(store);
     /*
-     * RELOAD RATHER THAN PATCH THE SCREEN UP. The address bar still names the table, so a fresh boot
-     * lands exactly where the person was — watching it — with the seat panel offered again because there
-     * is no longer an account. Clearing the session in memory instead would mean unpicking the seat, the
-     * roster and every in-flight request by hand, which is more ways to be wrong for no extra benefit.
+     * *** THE ORDER HERE IS THE FIX FOR A RACE THAT WAS MEASURED ON THE LIVE SITE, NOT IMAGINED. ***
+     *
+     * Signing out used to clear storage and reload. On the wire that was not enough: a poll already in
+     * flight called the join path, which called sign-in, which wrote `accountId` straight back — and two
+     * requests after the sign-out still carried a Bearer token. The claim in the acceptance table is that
+     * NO subsequent call carries an Authorization header, and it was false.
+     *
+     *   1. STOP THE POLL FIRST. Nothing new can start.
+     *   2. CLEAR, while clearing is still possible.
+     *   3. SEAL, so a request ALREADY in flight cannot put a credential back. Stopping the poll cannot
+     *      help with work that has already left; only making the keys unwritable can.
+     *   4. RELOAD, which builds a fresh unsealed store and asks the question again from the same address.
+     *
+     * Steps 2 and 3 are in this order on purpose — sealing blocks writes, and clearing is not a write.
      */
+    stopWaiting();
+    signOutLocally(store);
+    sealStore(store);
     location.reload();
   });
 }
@@ -844,7 +857,7 @@ async function startWaiting() {
  * address it on the path that advances machine seats: a numeric game id AND the seat list
  * that id is played with. A started lobby publishes a runtime SESSION id instead, where the
  * seat this client does not hold refuses every account and where no command makes a machine
- * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.f974d03e.mjs. So a started table with no
+ * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.8ace9e13.mjs. So a started table with no
  * descriptor is reported as what it is, with the reason, and NOTHING is dealt.
  */
 async function onTableStarted(joined) {

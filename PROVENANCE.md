@@ -3,7 +3,7 @@
 This repository is a **mirror**. It holds only the built static output.
 
 - Source of truth: the private `josephmalaba/lastikadi-web` repository,
-  branch `main`, commit 35c564567e93c82b3b2a6b36a73d4634e185435f.
+  branch `main`, commit 880223ecdf9be8489906cc7c6c0e27b2ead2a2ec.
 - Built with `npm run build` (`scripts/emit-dist.mjs`): content-addressed
   assets, generated cache policy, claim guard enforced at build time.
 - Every claim on this page resolves to `data/truth.json` in the source repo.

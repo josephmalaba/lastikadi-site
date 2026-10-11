@@ -740,3 +740,44 @@ export function signOutLocally(store) {
   }
   return { ok: true, cleared, trailCleared: Array.isArray(keys) };
 }
+
+/**
+ * *** SEAL THE STORE AFTER A SIGN-OUT, OR THE SIGN-OUT LOSES A RACE IT CANNOT SEE. ***
+ *
+ * MEASURED ON THE LIVE SITE, and the reason this exists. Signing out cleared the session — and then a
+ * poll that was already in flight called `joinSharedTable`, which called `signIn`, which wrote the
+ * account id straight back:
+ *
+ *     storage after sign-out : ["venue.accountId"]
+ *     AFTER sign-out, 2 calls carried a Bearer token: GET /deckmaster/leaders
+ *
+ * A sign-out that empties storage and is then refilled by work it did not know was running has not
+ * signed anybody out. The unit test passed because a test double has no concurrent poll — the defect
+ * lived exactly in the gap between the double and a real browser, which is why it was only visible on
+ * the wire.
+ *
+ * *** SO CLEARING IS NOT ENOUGH AND THIS IS THE OTHER HALF: IDENTITY BECOMES UNWRITABLE. *** Sealing
+ * wraps `set` and `remove` so that any writer still holding this store — a poll, a retry, a request in
+ * flight — can no longer put a credential back. It is a no-op on reads, so a page that is mid-anything
+ * still renders the truth (that there is no session) instead of failing.
+ *
+ * The seal is deliberately irreversible for the life of the document: a reload builds a fresh store, and
+ * a fresh question is the correct behaviour after somebody has said no to this one.
+ *
+ * *** ONLY WRITES ARE BLOCKED, AND REMOVES ARE LEFT ALONE. *** Removing an identity key always moves in
+ * the direction of being signed out, so there is nothing to guard against; and `signIn`'s own stale-token
+ * path removes keys, which would be a strange thing to forbid. Blocking the one direction that puts a
+ * credential BACK is the whole of the requirement.
+ */
+export function sealStore(store) {
+  if (store.__sealed) return store;
+  const innerSet = store.set.bind(store);
+  const identity = new Set(SIGN_OUT_KEYS);
+  store.set = (key, value) => {
+    // A blocked write is silent on purpose: the caller is not doing anything wrong, it is simply too late.
+    if (identity.has(key)) return;
+    innerSet(key, value);
+  };
+  store.__sealed = true;
+  return store;
+}
