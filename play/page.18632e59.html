@@ -76,6 +76,26 @@ font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .seat{border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:11px;color:var(--dim);background:var(--panel2)}
 .seat.open{border-style:dashed;color:var(--gold-hi)}
 .waitcode{font-size:11px;color:var(--dim);letter-spacing:.08em}
+/* THE SEAT CONSENT PANEL. It sits INSIDE the waiting column rather than over it, so it can never cover
+   the countdown or the seats — which is what makes "declining never blocks the waiting screen" true by
+   construction. Bounded width so the name field does not stretch across a desktop. */
+.consent{display:flex;flex-direction:column;gap:6px;align-items:stretch;text-align:left;margin-top:10px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel,#16261D);
+  max-width:340px;width:100%}
+.consent[hidden]{display:none}
+.consent__title{margin:0;font-weight:650;font-size:15px;color:var(--gold-hi)}
+.consent__body{margin:0;font-size:13px;color:var(--dim)}
+.consent label{font-size:12px;color:var(--dim)}
+.consent input{width:100%;font:inherit;font-size:16px;color:var(--cream);background:#0B1410;
+  border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+.consent input:focus{outline:2px solid var(--gold);outline-offset:1px}
+.consent button{font:inherit;font-weight:650;border:0;border-radius:9px;padding:11px 14px;cursor:pointer;
+  background:var(--gold);color:#20180A;width:100%}
+.consent button.quiet{background:transparent;color:var(--cream);border:1px solid var(--line);font-weight:500}
+.consent button:disabled{opacity:.45;cursor:default}
+.consent .hint{margin:0;font-size:12px;color:var(--dim)}
+.consent .hint[role="alert"]{color:var(--bad,#E0A98F);font-weight:600}
+.consent .hint[hidden]{display:none}
 .card.wild{outline:2px dashed var(--gold-hi);outline-offset:2px}
 .card.dim{opacity:.42;cursor:not-allowed}
 .card.dim:hover{transform:none}
@@ -196,6 +216,39 @@ footer{padding:8px 14px;font-size:12px;color:var(--dim);text-align:center;border
         <div class="waitlabel" id="waitlabel"></div>
         <div class="seatrow" id="waitseats"></div>
         <div class="waitcode" id="waitcode"></div>
+        <!--
+          *** THE CONSENT PANEL, AND IT LIVES INSIDE THE WAITING SCREEN ON PURPOSE. ***
+          The approved guest policy permits a free-play seat without a password, but not without
+          ASKING: no account may be created before a person tries to take a seat, and a scan must not
+          silently register one. This panel is that ask.
+
+          Putting it inside `#wait` is what makes "declining never blocks the waiting screen, the
+          roster or the countdown" true by construction rather than by discipline: the countdown and the
+          seats are siblings ABOVE it, so dismissing this cannot take them away, and nothing here is an
+          overlay that could cover the table.
+
+          THE NAME FIELD IS THE POINT. A generated username must not be used as a display name, and a
+          generated name is what used to reach this table's public roster. Asking for the name here is
+          what removes the last path by which one could.
+        -->
+        <div class="consent" id="seatConsent" hidden>
+          <p class="consent__title" id="seatConsentTitle">Set up your place at this table</p>
+          <p class="consent__body" id="seatConsentBody">
+            This gives you a name on the table and keeps your seat if you close and reopen the page.
+            You do not choose a password, and nothing is sent to your email.
+          </p>
+          <label for="seatName">The name the table will show</label>
+          <input id="seatName" name="seatName" type="text" autocomplete="nickname"
+                 autocapitalize="words" spellcheck="false" maxlength="32"
+                 aria-describedby="seatNameNote">
+          <p class="hint" id="seatNameNote">
+            This is what everyone at the table sees. It is not your sign-in name, and it does not have to
+            match it.
+          </p>
+          <button type="button" id="seatConsentGo">Set up my seat</button>
+          <button type="button" class="quiet" id="seatConsentWatch">Just watch for now</button>
+          <p class="hint" id="seatConsentError" role="alert" hidden></p>
+        </div>
       </div>
       <div class="status" id="status" role="status" aria-live="polite">Reading the link…</div>
       <div class="directive" id="directive"></div>
@@ -218,7 +271,7 @@ import { GameHost, LocalAuthority, NetworkAuthority } from './host.e30228b1.mjs'
 import { SERVED, planForLink, planForRuntime } from './identity.77fde61c.mjs';
 import {
   OUTCOMES, PLAY_DESCRIPTOR_GAP, POLL_MS, SERVICE_BASE, joinSharedTable, joinVenue,
-} from './session.3205aa19.mjs';
+} from './session.2aee73c1.mjs';
 import { countdown, readCode, waitPlan } from './waiting.63b5b1c4.mjs';
 
 /** The offline engine's own seat LABELS. They are not account ids and never leave this phone. */
@@ -561,6 +614,84 @@ function stopWaiting() {
  * poll cannot make the number wrong, and the phone and the venue display are doing the same
  * arithmetic on the same field.
  */
+/*
+ * *** THE SEAT CONSENT PANEL: ASK ONCE PER BROWSER PER TABLE, AND MAKE "NO" STICK. ***
+ *
+ * The approved decision rules are three, and each is a line of code rather than an intention:
+ *
+ *   1. "shown at most once per browser per table" — the answer is remembered under a per-table key, so
+ *      a refusal cannot re-appear on the next poll. `store` is the same `venue.`-prefixed browser store
+ *      the session already uses; this key holds a CHOICE, never a credential, so it is nothing D2 is
+ *      about.
+ *   2. "only when the resolved lobby is JOINABLE" — a table that has started or expired never prompts,
+ *      because there is no seat left to take. The caller only paints this when the join actually
+ *      reported that a seat would create an account.
+ *   3. "declining never blocks the waiting screen, the roster or the countdown" — true by construction:
+ *      the panel is a sibling INSIDE `#wait`, so hiding it cannot take the countdown away, and nothing
+ *      here is an overlay.
+ *
+ * The seat is taken with the name the person typed, and that name is what reaches the table's public
+ * roster. That is the whole point: it replaces a generated account name that used to be shown to a room.
+ */
+function seatWatched(code) {
+  return store.get('watch.' + code) === '1';
+}
+
+function paintSeatConsent() {
+  const panel = $('seatConsent');
+  if (!panel) return;
+  // A choice already made for THIS table is honoured: a dismissal is not a question to ask again.
+  panel.hidden = seatWatched(scannedCode);
+  const err = $('seatConsentError');
+  if (err) { err.textContent = ''; err.hidden = true; }
+}
+
+function setSeatConsentError(message) {
+  const err = $('seatConsentError');
+  if (!err) return;
+  err.textContent = message;
+  err.hidden = false;
+}
+
+/** The seat is taken with a CHOSEN name, or not at all — there is no generated fallback here. */
+async function takeSeat() {
+  const input = $('seatName');
+  const chosen = input ? String(input.value || '').trim() : '';
+  if (chosen === '') {
+    // Told plainly, and the field is focused so the next action is obvious rather than implied.
+    setSeatConsentError('Type the name the table should show, then set up your seat.');
+    if (input) input.focus();
+    return;
+  }
+  const go = $('seatConsentGo');
+  if (go) go.disabled = true;
+  try {
+    const joined = await joinSharedTable(fetch.bind(globalThis), SERVICE_BASE, store, scannedCode,
+      SERVED[identity.game], { displayName: chosen });
+    if (joined.outcome === OUTCOMES.TABLE_WAITING || joined.outcome === OUTCOMES.TABLE_STARTED_UNPLAYABLE) {
+      const panel = $('seatConsent');
+      if (panel) panel.hidden = true;
+      await startWaiting();
+      return;
+    }
+    setSeatConsentError(joined.error || 'The table service would not give this phone a seat.');
+  } finally {
+    if (go) go.disabled = false;
+  }
+}
+
+if ($('seatConsentGo')) {
+  $('seatConsentGo').addEventListener('click', () => { takeSeat(); });
+}
+if ($('seatConsentWatch')) {
+  $('seatConsentWatch').addEventListener('click', () => {
+    // A REAL, PERMANENT CHOICE for this table: written down, so no later poll can ask again.
+    store.set('watch.' + scannedCode, '1');
+    const panel = $('seatConsent');
+    if (panel) panel.hidden = true;
+  });
+}
+
 async function startWaiting() {
   stopWaiting();
   offline = false; blocked = false; table = null; host = null; authority = null; view = null;
@@ -580,7 +711,21 @@ async function startWaiting() {
       detail: 'code ' + scannedCode + ' was refused by the service',
     });
   }
-  if (joined.outcome !== OUTCOMES.TABLE_WAITING && joined.outcome !== OUTCOMES.TABLE_STARTED_UNPLAYABLE) {
+  /*
+   * *** A SEAT WOULD CREATE AN ACCOUNT, SO THE PERSON IS ASKED FIRST — AND WATCHING STARTS NOW. ***
+   *
+   * `SEAT_NEEDS_CONSENT` is NOT a failure and must not go to failVenue: the table is real, it is
+   * waiting, and the person is entitled to watch it. It carries the resolved lobby for exactly this
+   * reason, so the roster and the countdown below run unchanged — the ONLY thing withheld is the seat,
+   * which is the one thing that needs an account. Nothing has been created at this point: no register,
+   * no login, no join.
+   *
+   * This is the approved guest policy in code rather than in copy: "No account is created before a
+   * person tries to take a seat at a table... Everything else — resolving a code, waiting for a table,
+   * reading the roster, spectating — is available with no account."
+   */
+  const needsConsent = joined.outcome === OUTCOMES.SEAT_NEEDS_CONSENT;
+  if (!needsConsent && joined.outcome !== OUTCOMES.TABLE_WAITING && joined.outcome !== OUTCOMES.TABLE_STARTED_UNPLAYABLE) {
     return failVenue(joined);
   }
 
@@ -588,6 +733,7 @@ async function startWaiting() {
   const draw = () => paintWait(waitPlan(scannedCode, last, SERVED, Date.now()));
   draw();
   paintMode();
+  if (needsConsent) paintSeatConsent();
 
   const poll = async () => {
     const again = await joinSharedTable(fetch.bind(globalThis), SERVICE_BASE, store, scannedCode, SERVED[identity.game]);
@@ -615,7 +761,7 @@ async function startWaiting() {
  * address it on the path that advances machine seats: a numeric game id AND the seat list
  * that id is played with. A started lobby publishes a runtime SESSION id instead, where the
  * seat this client does not hold refuses every account and where no command makes a machine
- * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.3205aa19.mjs. So a started table with no
+ * move — measured, see PLAY_DESCRIPTOR_GAP in ./session.2aee73c1.mjs. So a started table with no
  * descriptor is reported as what it is, with the reason, and NOTHING is dealt.
  */
 async function onTableStarted(joined) {

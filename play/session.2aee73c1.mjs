@@ -87,6 +87,24 @@ export const OUTCOMES = Object.freeze({
    */
   CODE_UNKNOWN: 'code-unknown',
   /**
+   * *** A SEAT IS WANTED AND NO ACCOUNT EXISTS, SO THE PERSON MUST BE ASKED FIRST. ***
+   *
+   * The approved guest policy is explicit: "Do NOT silently create a registered, durable user account
+   * or password on QR scan", and "No account is created before a person tries to take a seat at a
+   * table". Scanning and watching need no account; TAKING A SEAT is the act that needs one.
+   *
+   * MEASURED BEFORE THIS EXISTED, on a real table: a bare scan with no sign-in and no click issued
+   * `POST /auth/register` with a generated username and a generated password, stored the token in
+   * localStorage, and then sent that generated username as the seat's `displayName` — so a machine
+   * name appeared in the public roster of a room. That is a controlling Founder disposition being
+   * broken by the happy path, and this outcome is how the client stops doing it.
+   *
+   * It is a REFUSAL-FREE stop, deliberately: nothing has failed, the table is real and waiting, and
+   * the person is being asked a question rather than told about an error. Nothing has been created
+   * when this is returned — no account, no token, no seat.
+   */
+  SEAT_NEEDS_CONSENT: 'seat-needs-consent',
+  /**
    * The table exists and has not started: the state a waiting screen is for. The lobby it
    * resolved is attached to the outcome, so the countdown is a fact about the service's
    * answer rather than about this client's clock.
@@ -560,6 +578,48 @@ export async function joinSharedTable(fetchImpl, base, store, code, game = SERVE
    *     about — the first build of this did exactly that and the started-table case failed
    *     with "Cannot read properties of null (reading 'token')" in real Chrome.
    */
+  /*
+   * *** THE CONSENT GATE. NO ACCOUNT IS CREATED WITHOUT AN EXPLICIT ACT AND A CHOSEN NAME. ***
+   *
+   * THE ORDER ABOVE IS UNCHANGED AND STILL RIGHT: the code is resolved first, publicly, so a code that
+   * names no table costs a guest nothing. What changes is the step after it. `signIn` used to run
+   * unconditionally here, so a scan silently registered a durable account with a generated password and
+   * then used that generated username as the seat's public display name.
+   *
+   * MEASURED BEFORE THIS EXISTED, on a real joinable table, with no sign-in and no click:
+   *     POST /auth/register  {"username":"venueguest-5b3iw5eftt","password":"venue-venueguest-ro08vis39o-9x"}
+   *     POST /lobby/W5QPSEJNE6/join  {"displayName":"venueguest-5b3iw5eftt"}
+   *     localStorage: {"venue.token":"...","venue.accountId":"429"}
+   * That is Founder disposition D1 — "Do NOT silently create a registered, durable user account or
+   * password on QR scan" — being broken by the happy path.
+   *
+   * *** TWO THINGS ARE NOW REQUIRED BEFORE ANYTHING IS CREATED: A SEAT-WORTHY INTENT, AND A NAME. ***
+   *
+   *   - A HELD SESSION IS NOT A NEW ACCOUNT. A browser that already holds a token creates nothing by
+   *     joining, so nothing about it needs consent here and its flow is untouched. That is what keeps a
+   *     returning player from being asked the same question on every scan.
+   *   - NO SESSION AND NO NAME IS THE CASE THIS EXISTS FOR. The caller is told to ask, and NOTHING is
+   *     sent: no register, no login, no join. The person can watch the table perfectly well without one.
+   *
+   * The name is REQUIRED rather than optional because it is what the ROOM sees. The approved
+   * specification is unambiguous that a display name must never be derived from "an email address, an
+   * account id, or a generated credential" — requiring it here is what makes that true rather than
+   * merely intended, because no path is left that reaches the roster with a generated name.
+   */
+  const chosenName = typeof options.displayName === 'string' ? options.displayName.trim() : '';
+  const heldToken = typeof store.get('token') === 'string' && store.get('token') !== '';
+  if (!heldToken && chosenName === '') {
+    return {
+      outcome: OUTCOMES.SEAT_NEEDS_CONSENT,
+      lobby: resolved.lobby,
+      session: null,
+      accountId: null,
+      seatNo: null,
+      play: null,
+      error: null,
+    };
+  }
+
   const session = await signIn(fetchImpl, base, store, options);
   if (!session.ok) {
     return { outcome: OUTCOMES.NO_ACCOUNT, lobby: resolved.lobby, session: null, accountId: null, seatNo: null, play: null, error: session.error };
